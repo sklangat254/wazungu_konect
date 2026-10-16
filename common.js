@@ -1,12 +1,16 @@
 /* Amoriva — shared logic (Firebase, auth guard, presence, helpers, nav, ads) */
 
 // 1) Firebase — fill in apiKey / appId from Firebase Console → Project settings → Your apps (Web app)
-const FIREBASE_CONFIG = {
-  apiKey: "YOUR_WEB_API_KEY",
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCQE9O57a5qXV_ttl5P1tJq17pqXjGdTqc",
   authDomain: "aviabustout.firebaseapp.com",
   databaseURL: "https://aviabustout-default-rtdb.firebaseio.com",
   projectId: "aviabustout",
-  appId: "YOUR_WEB_APP_ID"
+  storageBucket: "aviabustout.appspot.com",
+  messagingSenderId: "206186525313",
+  appId: "1:206186525313:web:e298094387b9082c285380",
+  measurementId: "G-P0ZYKGRRFB"
 };
 
 // All Amoriva data lives under this node so it never touches CowCash / PaidTasks data
