@@ -19,7 +19,7 @@ const ROOT = "amoriva";
 // 2) Ads — Google AdSense. Leave empty to hide ad slots until approved.
 const ADS = { client: "", slot: "" }; // e.g. client: "ca-pub-1234567890", slot: "9876543210"
 
-firebase.initializeApp(FIREBASE_CONFIG);
+firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 const TS = firebase.database.ServerValue.TIMESTAMP;
