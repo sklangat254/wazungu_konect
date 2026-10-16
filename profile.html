@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f73">
+<title>Amoriva – Profile</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="app has-nav">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div>Profile</div>
+  </div>
+
+  <div class="card center" id="me"><div class="loader"></div></div>
+
+  <div class="card stack">
+    <a class="btn btn-primary" href="setup.html?edit=1">✏️ Edit profile</a>
+    <button class="btn btn-outline" id="themeBtn">🌙 Switch theme</button>
+    <a class="btn btn-outline" href="terms.html">📄 Terms, rules &amp; privacy</a>
+    <button class="btn btn-outline" id="logoutBtn">Log out</button>
+  </div>
+
+  <div class="card">
+    <h2>Delete account</h2>
+    <p class="muted small" style="margin:6px 0 14px">Permanently removes your profile, chat list and login. Messages you already sent stay visible to the people you sent them to.</p>
+    <button class="btn btn-danger" id="deleteBtn">Delete my account</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  requireAuth().then(({ user, profile: p }) => {
+    renderNav("profile");
+    $("#me").innerHTML = `
+      <div style="display:flex;justify-content:center">${avatarHTML(p, user.uid, true, "lg")}</div>
+      <h1 style="margin-top:12px">${esc(p.name)} ${flag(p.country)}</h1>
+      <p class="muted small">${esc(countryName(p.country))} · ${esc(user.email)}</p>
+      ${p.bio ? `<p style="margin-top:12px">${esc(p.bio)}</p>` : ""}
+      <div style="text-align:left;margin-top:14px">
+        <div class="lang-row"><b>Speaks:</b> ${esc((p.speaks || []).join(", "))}</div>
+        <div class="lang-row"><b>Learning:</b> ${esc((p.learning || []).join(", "))}</div>
+        <div class="chips" style="margin-top:10px">${(p.interests || []).map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>
+      </div>`;
+  });
+
+  $("#themeBtn").onclick = toggleTheme;
+  $("#logoutBtn").onclick = logout;
+
+  $("#deleteBtn").onclick = async () => {
+    if (!confirm("Delete your Amoriva account permanently? This can't be undone.")) return;
+    const user = auth.currentUser, uid = user.uid;
+    const btn = $("#deleteBtn"); btn.disabled = true; btn.textContent = "Deleting…";
+    try {
+      // Re-authenticate first so the final step can't fail halfway
+      const pass = prompt("Enter your password to confirm:");
+      if (!pass) { btn.disabled = false; btn.textContent = "Delete my account"; return; }
+      await user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, pass));
+
+      db.ref(".info/connected").off();
+      await ref("status/" + uid).onDisconnect().cancel();
+      await ref("users/" + uid + "/lastSeen").onDisconnect().cancel();
+      const updates = {};
+      updates["users/" + uid] = null;
+      updates["status/" + uid] = null;
+      updates["userChats/" + uid] = null;
+      updates["blocks/" + uid] = null;
+      await db.ref(ROOT).update(updates);
+      await user.delete();
+      alert("Your account has been deleted.");
+      location.replace("index.html");
+    } catch (e) {
+      toast(friendlyAuthError(e), true);
+      btn.disabled = false; btn.textContent = "Delete my account";
+    }
+  };
+</script>
+</body>
+</html>

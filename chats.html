@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f73">
+<title>Amoriva – Chats</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="app has-nav">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div>Chats</div>
+  </div>
+
+  <div class="card" id="box"><div class="loader"></div></div>
+  <div id="ad1"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  let myUid, chats = [], profiles = {}, statuses = {}, watching = {};
+
+  requireAuth().then(({ user }) => {
+    myUid = user.uid;
+    renderNav("chats");
+    renderAd($("#ad1"));
+
+    ref("userChats/" + myUid).orderByChild("at").on("value", (s) => {
+      chats = [];
+      s.forEach((c) => { chats.push({ id: c.key, ...c.val() }); });
+      chats.reverse();
+      chats.forEach((c) => watchUser(c.with));
+      render();
+    });
+  });
+
+  function watchUser(uid) {
+    if (!uid || watching[uid]) return;
+    watching[uid] = true;
+    ref("users/" + uid).once("value").then((s) => { profiles[uid] = s.val() || { name: "Deleted user" }; render(); });
+    ref("status/" + uid).on("value", (s) => { statuses[uid] = s.val(); render(); });
+  }
+
+  function render() {
+    const box = $("#box");
+    if (!chats.length) {
+      box.innerHTML = `<div class="empty"><div class="big">💬</div><h2>No conversations yet</h2>
+        <p class="muted small" style="margin:8px 0 16px">Find someone who speaks the language you're learning and say hello.</p>
+        <a class="btn btn-primary btn-sm" href="members.html">🌍 Browse members</a></div>`;
+      return;
+    }
+    box.innerHTML = chats.map((c) => {
+      const p = profiles[c.with] || { name: "…" };
+      const online = statuses[c.with] && statuses[c.with].state === "online";
+      const mine = c.lastFrom === myUid ? "You: " : "";
+      return `<div class="row" data-u="${esc(c.with)}">
+        ${avatarHTML(p, c.with, online)}
+        <div class="info">
+          <div style="font-weight:800">${esc(p.name)} ${flag(p.country)}</div>
+          <div class="last">${esc(mine + (c.last || ""))}</div>
+        </div>
+        <div class="meta">${timeAgo(c.at)}${c.unread ? `<br><span class="badge">${c.unread}</span>` : ""}</div>
+      </div>`;
+    }).join("");
+    $$(".row", box).forEach((r) => r.onclick = () => location.href = "chat.html?u=" + encodeURIComponent(r.dataset.u));
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#227a7e">
+<title>Amoriva – Chat</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="chat-page">
+  <div class="chat-head">
+    <button class="back" onclick="history.length > 1 ? history.back() : location.href='chats.html'">←</button>
+    <div id="headAvatar"></div>
+    <div style="flex:1;min-width:0">
+      <div class="name" id="headName">…</div>
+      <div class="status-text" id="headStatus"></div>
+    </div>
+    <button class="icon-btn" id="menuBtn">⋯</button>
+  </div>
+
+  <div class="messages" id="msgs">
+    <div class="notice">🛡️ Keep it friendly. Never send money, M-Pesa PINs or personal financial details — Amoriva will never ask you to pay anyone.</div>
+  </div>
+
+  <div class="starter hidden" id="starters"></div>
+  <div class="composer" id="composer">
+    <textarea class="input" id="text" rows="1" maxlength="1000" placeholder="Type a message…"></textarea>
+    <button class="btn btn-primary" id="sendBtn">Send</button>
+  </div>
+  <div class="notice hidden" id="blockedNote" style="margin:10px 12px"></div>
+</div>
+
+<!-- Menu sheet -->
+<div class="sheet-bg" id="menu">
+  <div class="sheet stack">
+    <div id="profileView"></div>
+    <button class="btn btn-outline" id="blockBtn">🚫 Block</button>
+    <button class="btn btn-danger" id="reportOpen">⚠️ Report</button>
+    <button class="btn btn-outline" data-close>Close</button>
+  </div>
+</div>
+
+<!-- Report sheet -->
+<div class="sheet-bg" id="reportSheet">
+  <div class="sheet">
+    <h3>Report this member</h3>
+    <div class="field">
+      <select class="input" id="reason">
+        <option>Asking for money or payments</option>
+        <option>Scam or fake profile</option>
+        <option>Harassment or hate</option>
+        <option>Sexual or inappropriate content</option>
+        <option>Spam</option>
+        <option>Seems under 18</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field"><textarea class="input" id="reportNote" maxlength="500" placeholder="Anything else we should know? (optional)"></textarea></div>
+    <div class="stack">
+      <button class="btn btn-danger" id="reportSend">Send report</button>
+      <button class="btn btn-outline" data-close>Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  const otherUid = new URLSearchParams(location.search).get("u");
+  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, lastDay = "", lastSend = 0, msgCount = 0;
+
+  requireAuth().then(async ({ user, profile }) => {
+    myUid = user.uid; me = profile;
+    if (!otherUid || otherUid === myUid) { location.replace("members.html"); return; }
+    cid = chatIdFor(myUid, otherUid);
+
+    const snap = await ref("users/" + otherUid).once("value");
+    other = snap.val();
+    if (!other) {
+      $("#headName").textContent = "Member not found";
+      setComposer(false, "This account no longer exists.");
+      return;
+    }
+    $("#headName").textContent = `${other.name} ${flag(other.country)}`;
+    $("#headAvatar").innerHTML = avatarHTML(other, otherUid, false);
+    renderProfileView();
+
+    ref("status/" + otherUid).on("value", (s) => {
+      const st = statusLabel(s.val());
+      $("#headStatus").textContent = st.text;
+      const dot = $("#headAvatar .dot"); if (dot) dot.classList.toggle("online", st.online);
+    });
+
+    ref(`blocks/${myUid}/${otherUid}`).on("value", (s) => { iBlocked = s.exists(); updateBlockUI(); });
+    ref(`blocks/${otherUid}/${myUid}`).on("value", (s) => { theyBlocked = s.exists(); updateBlockUI(); });
+
+    // Clear my unread count if the conversation already exists
+    const uc = await ref(`userChats/${myUid}/${cid}`).once("value");
+    if (uc.exists()) ref(`userChats/${myUid}/${cid}/unread`).set(0);
+
+    ref("messages/" + cid).limitToLast(150).on("child_added", (s) => addMessage(s.val()));
+    setTimeout(() => { if (!msgCount) showStarters(); }, 900);
+  });
+
+  function addMessage(m) {
+    msgCount++;
+    $("#starters").classList.add("hidden");
+    const box = $("#msgs");
+    const day = new Date(m.at || Date.now()).toDateString();
+    if (day !== lastDay) {
+      lastDay = day;
+      const sep = document.createElement("div");
+      sep.className = "day-sep";
+      sep.textContent = day === new Date().toDateString() ? "Today" : new Date(m.at).toLocaleDateString();
+      box.appendChild(sep);
+    }
+    const el = document.createElement("div");
+    el.className = "msg " + (m.from === myUid ? "me" : "them");
+    el.innerHTML = `${esc(m.text)}<span class="t">${clock(m.at)}</span>`;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+    if (m.from !== myUid && document.visibilityState === "visible") {
+      ref(`userChats/${myUid}/${cid}/unread`).set(0);
+    }
+  }
+
+  function showStarters() {
+    const s = $("#starters");
+    s.innerHTML = CONVERSATION_STARTERS.map((t) => `<button class="chip">${esc(t)}</button>`).join("");
+    s.classList.remove("hidden");
+    s.onclick = (e) => { const b = e.target.closest(".chip"); if (b) { $("#text").value = b.textContent; $("#text").focus(); } };
+  }
+
+  async function send() {
+    const text = $("#text").value.trim();
+    if (!text || iBlocked || theyBlocked) return;
+    if (Date.now() - lastSend < 700) return; // simple flood guard
+    lastSend = Date.now();
+    $("#text").value = ""; autoGrow();
+
+    const key = ref("messages/" + cid).push().key;
+    const preview = text.length > 80 ? text.slice(0, 80) + "…" : text;
+    const updates = {};
+    updates[`messages/${cid}/${key}`] = { from: myUid, text, at: TS };
+    updates[`userChats/${myUid}/${cid}`] = { with: otherUid, last: preview, lastFrom: myUid, at: TS, unread: 0 };
+    updates[`userChats/${otherUid}/${cid}/with`] = myUid;
+    updates[`userChats/${otherUid}/${cid}/last`] = preview;
+    updates[`userChats/${otherUid}/${cid}/lastFrom`] = myUid;
+    updates[`userChats/${otherUid}/${cid}/at`] = TS;
+    updates[`userChats/${otherUid}/${cid}/unread`] = firebase.database.ServerValue.increment(1);
+    try { await db.ref(ROOT).update(updates); }
+    catch (e) { toast("Message not sent. Check your connection.", true); $("#text").value = text; }
+  }
+
+  function autoGrow() { const t = $("#text"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; }
+  $("#text").addEventListener("input", autoGrow);
+  $("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); send(); } });
+  $("#sendBtn").onclick = send;
+
+  function setComposer(enabled, note) {
+    $("#composer").classList.toggle("hidden", !enabled);
+    $("#blockedNote").classList.toggle("hidden", enabled);
+    if (note) $("#blockedNote").textContent = note;
+  }
+  function updateBlockUI() {
+    $("#blockBtn").textContent = iBlocked ? "✅ Unblock" : "🚫 Block";
+    if (iBlocked) setComposer(false, "You blocked this member. Unblock from the ⋯ menu to chat again.");
+    else if (theyBlocked) setComposer(false, "You can't message this member.");
+    else setComposer(true);
+  }
+
+  function renderProfileView() {
+    $("#profileView").innerHTML = `<div class="member" style="margin-bottom:6px">
+      ${avatarHTML(other, otherUid)}
+      <div class="info">
+        <div class="name">${esc(other.name)} ${flag(other.country)}</div>
+        <div class="status-text">${esc(countryName(other.country))} · joined ${other.createdAt ? new Date(other.createdAt).toLocaleDateString() : ""}</div>
+        ${other.bio ? `<p class="bio">${esc(other.bio)}</p>` : ""}
+        <div class="lang-row"><b>Speaks:</b> ${esc((other.speaks || []).join(", "))}</div>
+        <div class="lang-row"><b>Learning:</b> ${esc((other.learning || []).join(", "))}</div>
+      </div></div>`;
+  }
+
+  // Sheets
+  const open = (id) => $("#" + id).classList.add("show");
+  const closeAll = () => $$(".sheet-bg").forEach((s) => s.classList.remove("show"));
+  $("#menuBtn").onclick = () => open("menu");
+  $$("[data-close]").forEach((b) => b.onclick = closeAll);
+  $$(".sheet-bg").forEach((bg) => bg.onclick = (e) => { if (e.target === bg) closeAll(); });
+
+  $("#blockBtn").onclick = async () => {
+    const r = ref(`blocks/${myUid}/${otherUid}`);
+    if (iBlocked) { await r.remove(); toast("Unblocked"); }
+    else if (confirm(`Block ${other.name}? They won't be able to message you.`)) { await r.set(true); toast("Blocked"); }
+    closeAll();
+  };
+  $("#reportOpen").onclick = () => { closeAll(); open("reportSheet"); };
+  $("#reportSend").onclick = async () => {
+    try {
+      await ref("reports").push({ by: myUid, against: otherUid, chatId: cid,
+        reason: $("#reason").value, note: $("#reportNote").value.trim(), at: TS });
+      closeAll(); toast("Thanks — report sent. You can also block this member.");
+    } catch (e) { toast("Couldn't send report.", true); }
+  };
+</script>
+</body>
+</html>

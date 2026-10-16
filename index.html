@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f73">
+<title>Amoriva – Language Exchange</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div>Amoriva</div>
+    <div style="display:flex;gap:8px">
+      <button class="icon-btn" id="themeBtn">🌙 Theme</button>
+      <button class="icon-btn" id="skipBtn">Skip</button>
+    </div>
+  </div>
+
+  <div class="slides">
+    <!-- Slide 1 -->
+    <section class="slide on">
+      <div class="card stack">
+        <div class="feature">
+          <div class="ic" style="background:#e3f6ea">💬</div>
+          <div><h2>Practise through conversation</h2><p class="muted small">Chat with real people who speak the language you're learning — and help them with yours.</p></div>
+        </div>
+        <div class="feature">
+          <div class="ic" style="background:#e1f0f7">🌍</div>
+          <div><h2>Discover new cultures</h2><p class="muted small">Swap stories about food, traditions, music and everyday life.</p></div>
+        </div>
+        <div class="feature">
+          <div class="ic" style="background:#fdeedd">🤝</div>
+          <div><h2>Meet people worldwide</h2><p class="muted small">Find members by language, country and interests.</p></div>
+        </div>
+      </div>
+      <div class="hero">
+        <h1>Connect, Exchange &amp; Discover</h1>
+        <p>A free community for language and culture exchange.</p>
+      </div>
+    </section>
+
+    <!-- Slide 2 -->
+    <section class="slide">
+      <div class="hero" style="margin-top:6px">
+        <h1>How it works</h1>
+        <p>Three steps to your first conversation.</p>
+      </div>
+      <div class="card stack">
+        <div class="feature"><div class="step-num">1</div><div><h2>Create your profile</h2><p class="muted small">Tell us the languages you speak and want to learn.</p></div></div>
+        <div class="feature"><div class="step-num">2</div><div><h2>Find a partner</h2><p class="muted small">See who's online right now, or browse members who match your languages.</p></div></div>
+        <div class="feature"><div class="step-num">3</div><div><h2>Start chatting</h2><p class="muted small">Messages are delivered in real time. Block or report anyone, anytime.</p></div></div>
+      </div>
+      <div class="card">
+        <p class="small muted center">Amoriva is free and supported by ads. It is not a paid job and nobody is paid to chat — every member is a real person here to exchange languages.</p>
+      </div>
+    </section>
+
+    <!-- Slide 3 -->
+    <section class="slide">
+      <div class="card center stack" style="padding:28px 20px">
+        <div class="logo" style="width:76px;height:76px;font-size:2.2rem;margin:0 auto">💬</div>
+        <h1>Welcome to Amoriva</h1>
+        <p class="muted">Practise languages and share your culture with members around the world.</p>
+        <div class="chips" style="justify-content:center;margin-top:14px">
+          <span class="pill">💬 Real conversations</span>
+          <span class="pill">🌍 Global community</span>
+          <span class="pill">🛡️ Block &amp; report</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="dots" id="dots"><span class="on"></span><span></span><span></span></div>
+
+  <div id="ctaNext"><button class="btn btn-light" id="nextBtn">Next →</button></div>
+  <div id="ctaFinal" class="stack hidden">
+    <a class="btn btn-light" href="auth.html?mode=signup">Create Free Account →</a>
+    <a class="btn btn-ghost-light" href="auth.html?mode=login">Log In</a>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  // Already signed in? Go straight to the app.
+  const offAuth = auth.onAuthStateChanged((u) => { offAuth(); if (u) location.replace("members.html"); });
+
+  const slides = $$(".slide"), dots = $$("#dots span");
+  let i = 0;
+  function show(n) {
+    i = Math.max(0, Math.min(n, slides.length - 1));
+    slides.forEach((s, k) => s.classList.toggle("on", k === i));
+    dots.forEach((d, k) => d.classList.toggle("on", k === i));
+    const last = i === slides.length - 1;
+    $("#ctaNext").classList.toggle("hidden", last);
+    $("#ctaFinal").classList.toggle("hidden", !last);
+    $("#skipBtn").classList.toggle("hidden", last);
+  }
+  $("#nextBtn").onclick = () => show(i + 1);
+  $("#skipBtn").onclick = () => show(slides.length - 1);
+  $("#themeBtn").onclick = toggleTheme;
+
+  // Swipe support
+  let x0 = null;
+  document.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 50) show(i + (dx < 0 ? 1 : -1));
+    x0 = null;
+  });
+</script>
+</body>
+</html>

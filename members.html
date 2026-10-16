@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f73">
+<title>Amoriva – Members</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="app has-nav">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div>Amoriva</div>
+    <span class="icon-btn" id="onlineCount">● 0 online</span>
+  </div>
+
+  <div class="card">
+    <h1>Find a language partner</h1>
+    <p class="muted small" style="margin-bottom:14px">Real members, real-time status. Tap <b>Message</b> to start a conversation.</p>
+    <input class="input" id="search" placeholder="Search by name, country, language or interest">
+    <div class="scroll-x" id="filters" style="margin-top:12px">
+      <button class="chip on" data-f="all">All</button>
+      <button class="chip" data-f="online">🟢 Online now</button>
+      <button class="chip" data-f="teach">Can help me learn</button>
+      <button class="chip" data-f="help">Learning my language</button>
+    </div>
+  </div>
+
+  <div id="ad1"></div>
+  <div id="list"><div class="card"><div class="loader"></div></div></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  let me, myUid, users = {}, statuses = {}, blocked = {}, filter = "all";
+
+  requireAuth().then(({ user, profile }) => {
+    me = profile; myUid = user.uid;
+    renderNav("members");
+    renderAd($("#ad1"));
+
+    ref("blocks/" + myUid).on("value", (s) => { blocked = s.val() || {}; render(); });
+    ref("users").orderByChild("lastSeen").limitToLast(300).on("value", (s) => { users = s.val() || {}; render(); });
+    ref("status").on("value", (s) => { statuses = s.val() || {}; render(); });
+  });
+
+  $("#filters").onclick = (e) => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    $$("#filters .chip").forEach((c) => c.classList.toggle("on", c === b));
+    filter = b.dataset.f; render();
+  };
+  $("#search").oninput = () => render();
+
+  const isOnline = (uid) => statuses[uid] && statuses[uid].state === "online";
+  const overlap = (a = [], b = []) => a.filter((x) => b.includes(x));
+
+  function render() {
+    if (!me) return;
+    const q = $("#search").value.trim().toLowerCase();
+    const myLearning = me.learning || [], mySpeaks = me.speaks || [];
+
+    let rows = Object.entries(users)
+      .filter(([uid, u]) => uid !== myUid && u.profileComplete && !blocked[uid])
+      .map(([uid, u]) => {
+        const canTeach = overlap(u.speaks, myLearning);
+        const canHelp = overlap(u.learning, mySpeaks);
+        return { uid, u, online: isOnline(uid), canTeach, canHelp, score: canTeach.length * 2 + canHelp.length };
+      });
+
+    const onlineTotal = rows.filter((r) => r.online).length;
+    $("#onlineCount").textContent = `● ${onlineTotal} online`;
+
+    if (filter === "online") rows = rows.filter((r) => r.online);
+    if (filter === "teach") rows = rows.filter((r) => r.canTeach.length);
+    if (filter === "help") rows = rows.filter((r) => r.canHelp.length);
+    if (q) rows = rows.filter(({ u }) => [u.name, countryName(u.country), ...(u.speaks || []),
+      ...(u.learning || []), ...(u.interests || [])].join(" ").toLowerCase().includes(q));
+
+    rows.sort((a, b) => (b.online - a.online) || (b.score - a.score) || ((b.u.lastSeen || 0) - (a.u.lastSeen || 0)));
+
+    const list = $("#list");
+    if (!rows.length) {
+      list.innerHTML = `<div class="card empty">
+        <div class="big">🌱</div>
+        <h2>${filter === "online" ? "Nobody else is online right now" : "No members match yet"}</h2>
+        <p class="muted small" style="margin:8px 0 16px">Amoriva grows as people join. Invite a friend who's learning a language.</p>
+        <button class="btn btn-primary btn-sm" id="inviteBtn">📤 Invite friends</button>
+      </div>`;
+      $("#inviteBtn").onclick = invite;
+      return;
+    }
+
+    list.innerHTML = rows.map((r, idx) => {
+      const { uid, u, online } = r;
+      const st = statusLabel(statuses[uid]);
+      const matchLine = r.canTeach.length
+        ? `<span class="pill" style="margin-top:6px">✨ Speaks ${esc(r.canTeach.join(", "))}</span>`
+        : r.canHelp.length ? `<span class="pill" style="margin-top:6px">🤝 Learning ${esc(r.canHelp.join(", "))}</span>` : "";
+      return `<div class="card member">
+        ${avatarHTML(u, uid, online)}
+        <div class="info">
+          <div class="name">${esc(u.name)} ${flag(u.country)}</div>
+          <div class="status-text ${st.online ? "online" : ""}">${countryName(u.country) ? esc(countryName(u.country)) + " · " : ""}${st.text}</div>
+          ${matchLine}
+          ${u.bio ? `<p class="bio">${esc(u.bio)}</p>` : ""}
+          <div class="lang-row"><b>Speaks:</b> ${esc((u.speaks || []).join(", "))}</div>
+          <div class="lang-row"><b>Learning:</b> ${esc((u.learning || []).join(", "))}</div>
+          ${(u.interests || []).length ? `<div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>` : ""}
+          <div class="actions"><a class="btn btn-primary btn-sm" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function invite() {
+    const data = { title: "Amoriva", text: "Join me on Amoriva — a free language & culture exchange.", url: location.origin + "/index.html" };
+    if (navigator.share) navigator.share(data).catch(() => {});
+    else { navigator.clipboard?.writeText(data.url); toast("Link copied"); }
+  }
+</script>
+</body>
+</html>

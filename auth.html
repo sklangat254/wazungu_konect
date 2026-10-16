@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f73">
+<title>Amoriva – Sign up or log in</title>
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div>Amoriva</div>
+    <a class="icon-btn" href="index.html">← Home</a>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button id="tabSignup" class="on">Sign up</button>
+      <button id="tabLogin">Log in</button>
+    </div>
+
+    <div class="error" id="err"></div>
+
+    <!-- Sign up -->
+    <form id="signupForm" autocomplete="on">
+      <h1>Create your free account</h1>
+      <p class="muted small" style="margin-bottom:18px">Meet language partners from around the world.</p>
+      <div class="field">
+        <label for="suName">Display name</label>
+        <input class="input" id="suName" maxlength="40" placeholder="e.g. Kip" required autocomplete="nickname">
+      </div>
+      <div class="field">
+        <label for="suEmail">Email address</label>
+        <input class="input" id="suEmail" type="email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="suPass">Create password</label>
+        <div class="pw-wrap">
+          <input class="input" id="suPass" type="password" minlength="8" placeholder="At least 8 characters" required autocomplete="new-password">
+          <button type="button" data-toggle="suPass">Show</button>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="suAgree">
+        <span>I'm 18 or older and agree to the <a href="terms.html" target="_blank">Terms &amp; Community Rules</a>.</span></label>
+      <button class="btn btn-primary" id="suBtn" type="submit">Create Account</button>
+    </form>
+
+    <!-- Log in -->
+    <form id="loginForm" class="hidden" autocomplete="on">
+      <h1>Welcome back</h1>
+      <p class="muted small" style="margin-bottom:18px">Log in to continue your conversations.</p>
+      <div class="field">
+        <label for="liEmail">Email address</label>
+        <input class="input" id="liEmail" type="email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="liPass">Password</label>
+        <div class="pw-wrap">
+          <input class="input" id="liPass" type="password" placeholder="Your password" required autocomplete="current-password">
+          <button type="button" data-toggle="liPass">Show</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="liBtn" type="submit">Log In</button>
+      <p class="center small" style="margin-top:14px"><a href="#" id="forgot">Forgot password?</a></p>
+    </form>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  const err = $("#err");
+  const showErr = (m) => { err.textContent = m; err.classList.add("show"); };
+  const clearErr = () => err.classList.remove("show");
+
+  function setMode(mode) {
+    const signup = mode !== "login";
+    $("#tabSignup").classList.toggle("on", signup);
+    $("#tabLogin").classList.toggle("on", !signup);
+    $("#signupForm").classList.toggle("hidden", !signup);
+    $("#loginForm").classList.toggle("hidden", signup);
+    clearErr();
+  }
+  $("#tabSignup").onclick = () => setMode("signup");
+  $("#tabLogin").onclick = () => setMode("login");
+  setMode(new URLSearchParams(location.search).get("mode"));
+
+  $$("[data-toggle]").forEach((b) => b.onclick = () => {
+    const inp = document.getElementById(b.dataset.toggle);
+    inp.type = inp.type === "password" ? "text" : "password";
+    b.textContent = inp.type === "password" ? "Show" : "Hide";
+  });
+
+  $("#signupForm").onsubmit = async (e) => {
+    e.preventDefault(); clearErr();
+    const name = $("#suName").value.trim();
+    const email = $("#suEmail").value.trim();
+    const pass = $("#suPass").value;
+    if (name.length < 2) return showErr("Please enter a display name (at least 2 characters).");
+    if (pass.length < 8) return showErr("Password must be at least 8 characters.");
+    if (!$("#suAgree").checked) return showErr("Please confirm you're 18+ and accept the Terms.");
+    const btn = $("#suBtn"); btn.disabled = true; btn.textContent = "Creating account…";
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      await cred.user.updateProfile({ displayName: name });
+      await ref("users/" + cred.user.uid).set({ name, createdAt: TS, profileComplete: false });
+      location.replace("setup.html");
+    } catch (ex) {
+      showErr(friendlyAuthError(ex));
+      btn.disabled = false; btn.textContent = "Create Account";
+    }
+  };
+
+  $("#loginForm").onsubmit = async (e) => {
+    e.preventDefault(); clearErr();
+    const btn = $("#liBtn"); btn.disabled = true; btn.textContent = "Logging in…";
+    try {
+      await auth.signInWithEmailAndPassword($("#liEmail").value.trim(), $("#liPass").value);
+      location.replace("members.html"); // guard sends to setup.html if profile is unfinished
+    } catch (ex) {
+      showErr(friendlyAuthError(ex));
+      btn.disabled = false; btn.textContent = "Log In";
+    }
+  };
+
+  $("#forgot").onclick = async (e) => {
+    e.preventDefault(); clearErr();
+    const email = $("#liEmail").value.trim();
+    if (!email) return showErr("Enter your email above, then tap “Forgot password?” again.");
+    try { await auth.sendPasswordResetEmail(email); toast("Reset link sent — check your email."); }
+    catch (ex) { showErr(friendlyAuthError(ex)); }
+  };
+</script>
+</body>
+</html>

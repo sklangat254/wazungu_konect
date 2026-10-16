@@ -1,0 +1,56 @@
+{
+  "rules": {
+    "amoriva": {
+      "users": {
+        ".read": "auth != null",
+        ".indexOn": ["lastSeen"],
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          "name": { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 40" },
+          "bio": { ".validate": "newData.isString() && newData.val().length <= 200" },
+          "country": { ".validate": "newData.isString() && newData.val().length === 2" }
+        }
+      },
+
+      "status": {
+        ".read": "auth != null",
+        "$uid": { ".write": "auth != null && auth.uid === $uid" }
+      },
+
+      "messages": {
+        "$chatId": {
+          ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",
+          "$msgId": {
+            ".write": "auth != null && !data.exists() && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && !root.child('amoriva/blocks/' + $chatId.replace(auth.uid, '').replace('_', '') + '/' + auth.uid).exists()",
+            ".validate": "newData.hasChildren(['from', 'text', 'at']) && newData.child('from').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && newData.child('at').val() <= now"
+          }
+        }
+      },
+
+      "userChats": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid",
+          ".indexOn": ["at"],
+          "$chatId": {
+            ".write": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid)) && ($chatId.beginsWith($uid + '_') || $chatId.endsWith('_' + $uid))"
+          }
+        }
+      },
+
+      "blocks": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid",
+          "$other": { ".read": "auth != null && auth.uid === $other" }
+        }
+      },
+
+      "reports": {
+        "$reportId": {
+          ".write": "auth != null && !data.exists() && newData.child('by').val() === auth.uid"
+        }
+      }
+    }
+  }
+}

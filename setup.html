@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f73">
+<title>Amoriva – Your profile</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .progress { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin: 14px 0 20px; }
+  .progress div { height: 100%; background: var(--primary); width: 33%; transition: width .3s; }
+  .step { display: none; } .step.on { display: block; }
+  .nav-btns { display: flex; gap: 10px; margin-top: 20px; }
+  .nav-btns .btn-outline { width: 35%; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div>Amoriva</div>
+    <span class="icon-btn" id="stepLabel">Step 1 of 3</span>
+  </div>
+
+  <div class="card" id="loading"><div class="loader"></div></div>
+
+  <div class="card hidden" id="wizard">
+    <span class="pill" id="modePill">👋 Set up your profile</span>
+    <div class="progress"><div id="bar"></div></div>
+    <div class="error" id="err"></div>
+
+    <!-- Step 1 -->
+    <div class="step on" data-step="1">
+      <h1>Where you're from &amp; your languages</h1>
+      <p class="muted small" style="margin-bottom:18px">This helps us show you good language partners.</p>
+      <div class="field">
+        <label for="country">Country</label>
+        <select class="input" id="country"></select>
+      </div>
+      <div class="field">
+        <label>Languages you speak well</label>
+        <div class="chips" id="speaks"></div>
+      </div>
+      <div class="field">
+        <label>Languages you want to practise</label>
+        <div class="chips" id="learning"></div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step" data-step="2">
+      <h1>What do you like to talk about?</h1>
+      <p class="muted small" style="margin-bottom:18px">Pick up to 5 interests. They show on your profile.</p>
+      <div class="chips" id="interests"></div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step" data-step="3">
+      <h1>About you</h1>
+      <p class="muted small" style="margin-bottom:18px">A short intro so people know what you'd like to chat about.</p>
+      <div class="field">
+        <label for="name">Display name</label>
+        <input class="input" id="name" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="bio">Short bio <span class="muted small" id="bioCount">0/200</span></label>
+        <textarea class="input" id="bio" maxlength="200" placeholder="e.g. Teacher from Kericho. I'd love to practise French and talk about food and athletics."></textarea>
+      </div>
+      <p class="small muted">Don't share your phone number, address or financial details in your bio or chats.</p>
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn btn-outline" id="backBtn">← Back</button>
+      <button class="btn btn-primary" id="nextBtn">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  const isEdit = new URLSearchParams(location.search).get("edit") === "1";
+  let step = 1, getSpeaks, getLearning, getInterests;
+  const err = $("#err");
+  const showErr = (m) => { err.textContent = m; err.classList.add("show"); };
+
+  requireAuth({ needProfile: false }).then(({ user, profile }) => {
+    profile = profile || {};
+    if (isEdit) $("#modePill").textContent = "✏️ Edit your profile";
+
+    const sel = $("#country");
+    sel.innerHTML = `<option value="">Select your country</option>` +
+      COUNTRIES.map(([c, n]) => `<option value="${c}">${flag(c)} ${n}</option>`).join("");
+    sel.value = profile.country || guessCountry();
+
+    getSpeaks = chipPicker($("#speaks"), LANGUAGES, profile.speaks || [], 5);
+    getLearning = chipPicker($("#learning"), LANGUAGES, profile.learning || [], 5);
+    getInterests = chipPicker($("#interests"), INTERESTS, profile.interests || [], 5);
+    $("#name").value = profile.name || user.displayName || "";
+    $("#bio").value = profile.bio || "";
+    $("#bioCount").textContent = $("#bio").value.length + "/200";
+    $("#bio").oninput = () => $("#bioCount").textContent = $("#bio").value.length + "/200";
+
+    $("#loading").classList.add("hidden");
+    $("#wizard").classList.remove("hidden");
+    render();
+  });
+
+  function render() {
+    $$(".step").forEach((s) => s.classList.toggle("on", +s.dataset.step === step));
+    $("#bar").style.width = (step / 3 * 100) + "%";
+    $("#stepLabel").textContent = `Step ${step} of 3`;
+    $("#backBtn").style.visibility = step === 1 && !isEdit ? "hidden" : "visible";
+    $("#backBtn").textContent = step === 1 ? "Cancel" : "← Back";
+    $("#nextBtn").textContent = step === 3 ? (isEdit ? "Save changes" : "Finish & meet members →") : "Next →";
+    err.classList.remove("show");
+    window.scrollTo(0, 0);
+  }
+
+  function validate() {
+    if (step === 1) {
+      if (!$("#country").value) return "Please select your country.";
+      if (!getSpeaks().length) return "Pick at least one language you speak.";
+      if (!getLearning().length) return "Pick at least one language you want to practise.";
+    }
+    if (step === 2 && !getInterests().length) return "Pick at least one interest.";
+    if (step === 3 && $("#name").value.trim().length < 2) return "Please enter a display name.";
+    return null;
+  }
+
+  $("#backBtn").onclick = () => {
+    if (step === 1) { location.href = "profile.html"; return; }
+    step--; render();
+  };
+
+  $("#nextBtn").onclick = async () => {
+    const problem = validate();
+    if (problem) return showErr(problem);
+    if (step < 3) { step++; render(); return; }
+
+    const btn = $("#nextBtn"); btn.disabled = true; btn.textContent = "Saving…";
+    try {
+      const uid = auth.currentUser.uid;
+      const name = $("#name").value.trim();
+      await ref("users/" + uid).update({
+        name,
+        country: $("#country").value,
+        speaks: getSpeaks(),
+        learning: getLearning(),
+        interests: getInterests(),
+        bio: $("#bio").value.trim(),
+        profileComplete: true,
+        updatedAt: TS
+      });
+      if (auth.currentUser.displayName !== name) await auth.currentUser.updateProfile({ displayName: name });
+      location.replace(isEdit ? "profile.html" : "members.html");
+    } catch (ex) {
+      showErr("Couldn't save: " + ex.message);
+      btn.disabled = false; render();
+    }
+  };
+</script>
+</body>
+</html>
