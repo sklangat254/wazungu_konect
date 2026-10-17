@@ -88,8 +88,9 @@ function avatarHTML(user, uid, online, size = "") {
   </div>`;
 }
 
-// Shrink an image file to a small square-ish thumbnail data URL (keeps DB light)
-function resizeImage(file, max = 256, quality = 0.72) {
+// Center-crop an image file to a square thumbnail data URL, so it fills the
+// round avatar perfectly whatever the original shape (keeps the DB light too)
+function resizeImage(file, size = 256, quality = 0.72) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) return reject(new Error("Please choose an image file."));
     const reader = new FileReader();
@@ -98,12 +99,14 @@ function resizeImage(file, max = 256, quality = 0.72) {
       const img = new Image();
       img.onerror = () => reject(new Error("That image couldn't be loaded."));
       img.onload = () => {
-        let { width, height } = img;
-        if (width > height && width > max) { height = Math.round(height * max / width); width = max; }
-        else if (height > max) { width = Math.round(width * max / height); height = max; }
+        const side = Math.min(img.width, img.height);   // largest centered square that fits
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
         const c = document.createElement("canvas");
-        c.width = width; c.height = height;
-        c.getContext("2d").drawImage(img, 0, 0, width, height);
+        c.width = size; c.height = size;
+        const ctx = c.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size); // crop square → scale to size×size
         resolve(c.toDataURL("image/jpeg", quality));
       };
       img.src = reader.result;
