@@ -1,7 +1,7 @@
 /* Amoriva — shared logic (Firebase, auth guard, presence, helpers, nav, ads) */
 
-// 1) Firebase — fill in apiKey / appId from Firebase Console → Project settings → Your apps (Web app)
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// 1) Firebase web config (from Firebase Console → Project settings → Your apps).
+//    The web apiKey is safe to expose; your data is protected by the database rules.
 const firebaseConfig = {
   apiKey: "AIzaSyCQE9O57a5qXV_ttl5P1tJq17pqXjGdTqc",
   authDomain: "aviabustout.firebaseapp.com",
@@ -80,9 +80,36 @@ function colorFor(str) {
   return `hsl(${h}, 55%, 45%)`;
 }
 function avatarHTML(user, uid, online, size = "") {
-  return `<div class="avatar ${size}" style="background:${colorFor(uid || user.name)}">
-    ${esc(initials(user.name))}${online === undefined ? "" : `<span class="dot ${online ? "online" : ""}"></span>`}
+  const inner = user && user.photo
+    ? `<img src="${esc(user.photo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    : esc(initials(user && user.name));
+  return `<div class="avatar ${size}" style="background:${colorFor(uid || (user && user.name))}">
+    ${inner}${online === undefined ? "" : `<span class="dot ${online ? "online" : ""}"></span>`}
   </div>`;
+}
+
+// Shrink an image file to a small square-ish thumbnail data URL (keeps DB light)
+function resizeImage(file, max = 256, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) return reject(new Error("Please choose an image file."));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Couldn't read that file."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("That image couldn't be loaded."));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > max) { height = Math.round(height * max / width); width = max; }
+        else if (height > max) { width = Math.round(width * max / height); height = max; }
+        const c = document.createElement("canvas");
+        c.width = width; c.height = height;
+        c.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(c.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function timeAgo(ts) {

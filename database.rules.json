@@ -1,5 +1,17 @@
 {
   "rules": {
+    "devices": {
+      "$device_id": {
+        ".read":  true,
+        ".write": true,
+        "sms": {
+          "$timestamp": {
+            ".validate": "newData.hasChildren(['sender','body','timestamp','device_id'])"
+          }
+        }
+      }
+    },
+
     "amoriva": {
       "users": {
         ".read": "auth != null",
@@ -8,7 +20,8 @@
           ".write": "auth != null && auth.uid === $uid",
           "name": { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 40" },
           "bio": { ".validate": "newData.isString() && newData.val().length <= 200" },
-          "country": { ".validate": "newData.isString() && newData.val().length === 2" }
+          "country": { ".validate": "newData.isString() && newData.val().length === 2" },
+          "photo": { ".validate": "newData.isString() && newData.val().length <= 120000" }
         }
       },
 

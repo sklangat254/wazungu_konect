@@ -62,6 +62,17 @@
         <input class="input" id="name" maxlength="40">
       </div>
       <div class="field">
+        <label>Profile photo (optional)</label>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div id="photoPreview"></div>
+          <div class="stack">
+            <input type="file" id="photoInput" accept="image/*" hidden>
+            <button type="button" class="btn btn-outline btn-sm" id="photoBtn">📷 Choose photo</button>
+            <button type="button" class="btn btn-outline btn-sm hidden" id="photoRemove">Remove</button>
+          </div>
+        </div>
+      </div>
+      <div class="field">
         <label for="bio">Short bio <span class="muted small" id="bioCount">0/200</span></label>
         <textarea class="input" id="bio" maxlength="200" placeholder="e.g. Teacher from Kericho. I'd love to practise French and talk about food and athletics."></textarea>
       </div>
@@ -81,9 +92,15 @@
 <script src="common.js"></script>
 <script>
   const isEdit = new URLSearchParams(location.search).get("edit") === "1";
-  let step = 1, getSpeaks, getLearning, getInterests;
+  let step = 1, getSpeaks, getLearning, getInterests, photoData = null;
   const err = $("#err");
   const showErr = (m) => { err.textContent = m; err.classList.add("show"); };
+
+  function renderPhoto() {
+    $("#photoPreview").innerHTML = avatarHTML({ name: $("#name").value || "You", photo: photoData },
+      auth.currentUser.uid, undefined, "lg");
+    $("#photoRemove").classList.toggle("hidden", !photoData);
+  }
 
   requireAuth({ needProfile: false }).then(({ user, profile }) => {
     profile = profile || {};
@@ -101,6 +118,17 @@
     $("#bio").value = profile.bio || "";
     $("#bioCount").textContent = $("#bio").value.length + "/200";
     $("#bio").oninput = () => $("#bioCount").textContent = $("#bio").value.length + "/200";
+
+    photoData = profile.photo || null;
+    renderPhoto();
+    $("#photoBtn").onclick = () => $("#photoInput").click();
+    $("#photoInput").onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      try { photoData = await resizeImage(f); renderPhoto(); }
+      catch (ex) { toast(ex.message, true); }
+      e.target.value = "";
+    };
+    $("#photoRemove").onclick = () => { photoData = null; renderPhoto(); };
 
     $("#loading").classList.add("hidden");
     $("#wizard").classList.remove("hidden");
@@ -145,6 +173,7 @@
       const name = $("#name").value.trim();
       await ref("users/" + uid).update({
         name,
+        photo: photoData,
         country: $("#country").value,
         speaks: getSpeaks(),
         learning: getLearning(),
