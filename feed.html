@@ -7,19 +7,27 @@
 <title>Amoriva – Feed</title>
 <link rel="stylesheet" href="common.css">
 <style>
-  .post { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
-  .post-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+  .post { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 18px; overflow: hidden; }
+  .post-head { display: flex; align-items: center; gap: 12px; padding: 13px 14px; }
+  .post-head .who { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; color: inherit; }
+  .post-head .who .avatar { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary-soft); }
   .post-head .info { flex: 1; min-width: 0; }
   .post-head .name { font-weight: 800; }
-  .post-head .time { font-size: .78rem; color: var(--muted); }
-  .post-head .more { background: none; border: 0; color: var(--muted); font-size: 1.4rem; cursor: pointer; padding: 0 6px; }
-  .post-img { width: 100%; display: block; background: var(--surface-2); }
-  .post-cap { padding: 12px 16px 4px; font-size: .95rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
-  .post-actions { display: flex; gap: 6px; padding: 8px 10px 12px; }
-  .pa-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: none; border: 0; color: var(--muted); font-weight: 700; font-size: .88rem; cursor: pointer; padding: 9px; border-radius: 12px; }
+  .post-head .time { font-size: .76rem; color: var(--muted); }
+  .post-head .more { background: none; border: 0; color: var(--muted); font-size: 1.5rem; cursor: pointer; padding: 0 6px; line-height: 1; }
+  .post-img { width: 100%; max-height: 72vh; object-fit: cover; display: block; background: var(--surface-2); cursor: pointer; }
+  .post-actions { display: flex; align-items: center; gap: 2px; padding: 8px 8px 4px; }
+  .pa-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: none; border: 0; color: var(--text); font-weight: 700; font-size: .9rem; cursor: pointer; padding: 9px 12px; border-radius: 12px; }
   .pa-btn:hover { background: var(--surface-2); }
   .pa-btn.liked { color: var(--danger); }
-  .pa-count { padding: 0 16px 10px; font-size: .82rem; color: var(--muted); display: flex; gap: 14px; }
+  .pa-btn .ic { font-size: 1.3rem; line-height: 1; }
+  .pa-spacer { flex: 1; }
+  .pa-dm { color: var(--primary); }
+  .pa-likes { padding: 2px 16px 0; font-weight: 800; font-size: .92rem; }
+  .post-cap { padding: 6px 16px 2px; font-size: .95rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+  .post-cap b { font-weight: 800; }
+  .view-comments { background: none; border: 0; color: var(--muted); font-size: .88rem; cursor: pointer; padding: 8px 16px 14px; font-weight: 600; }
+  .view-comments:hover { color: var(--primary); }
   .fab { position: fixed; right: 18px; bottom: calc(var(--nav-h) + 18px); width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: var(--primary-ink); border: 0; font-size: 1.8rem; box-shadow: var(--shadow); cursor: pointer; z-index: 40; display: grid; place-items: center; }
   .comment { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .comment:last-child { border-bottom: 0; }
@@ -110,6 +118,16 @@
   /* ---------- Load ---------- */
   function clearListeners() { listeners.forEach((l) => l.ref.off(l.ev, l.cb)); listeners.length = 0; }
 
+  function loadError(e) {
+    const denied = e && (e.code === "PERMISSION_DENIED" || /permission/i.test(e.message || ""));
+    $("#list").innerHTML = `<div class="card empty">
+      <div class="big">⚠️</div><h2>Couldn't load the feed</h2>
+      <p class="muted small" style="margin:8px 0 4px">${denied
+        ? "The Feed database rules aren't published yet. Publish the updated rules in Firebase, then reload."
+        : esc((e && e.message) || "Something went wrong.")}</p></div>`;
+    $("#more").classList.add("hidden");
+  }
+
   function loadFeed() {
     ref("posts").orderByChild("at").limitToLast(limit).once("value").then((s) => {
       const posts = [];
@@ -117,14 +135,14 @@
       posts.reverse();
       render(posts);
       $("#more").classList.toggle("hidden", posts.length < limit);
-    });
+    }).catch(loadError);
   }
 
   function loadSingle(id) {
     ref("posts/" + id).once("value").then((s) => {
       if (!s.exists()) { $("#list").innerHTML = `<div class="card empty"><div class="big">🫥</div><h2>Post not found</h2><p class="muted small">It may have been deleted.</p></div>`; return; }
       render([{ id, ...s.val() }]);
-    });
+    }).catch(loadError);
   }
 
   $("#moreBtn").onclick = () => { limit += 8; loadFeed(); };
@@ -143,22 +161,26 @@
       const author = { name: p.authorName, photo: p.authorPhoto };
       return `<div class="post" data-id="${esc(p.id)}" data-by="${esc(p.by)}" data-name="${esc(p.authorName || "")}">
         <div class="post-head">
-          ${avatarHTML(author, p.by)}
-          <div class="info">
-            <div class="name">${esc(p.authorName || "Member")} ${flag(p.authorCountry)}</div>
-            <div class="time">${timeAgo(p.at)}</div>
-          </div>
+          <a class="who" href="profile.html?u=${encodeURIComponent(p.by)}">
+            ${avatarHTML(author, p.by)}
+            <div class="info">
+              <div class="name">${esc(p.authorName || "Member")} ${flag(p.authorCountry)}</div>
+              <div class="time">${timeAgo(p.at)}</div>
+            </div>
+          </a>
           <button class="more" data-act="menu">⋯</button>
         </div>
-        <img class="post-img" src="${esc(p.image)}" alt="" loading="lazy">
-        ${p.caption ? `<div class="post-cap">${esc(p.caption)}</div>` : ""}
-        <div class="pa-count"><span data-likes>0 likes</span><span data-comments>0 comments</span></div>
+        <img class="post-img" src="${esc(p.image)}" alt="" data-act="dbllike" loading="lazy">
         <div class="post-actions">
-          <button class="pa-btn" data-act="like">🤍 Like</button>
-          <button class="pa-btn" data-act="comment">💬 Comment</button>
-          <button class="pa-btn" data-act="share">🔗 Share</button>
-          <button class="pa-btn" data-act="dm">✉️ Message</button>
+          <button class="pa-btn" data-act="like"><span class="ic">🤍</span></button>
+          <button class="pa-btn" data-act="comment"><span class="ic">💬</span></button>
+          <button class="pa-btn" data-act="share"><span class="ic">🔗</span></button>
+          <span class="pa-spacer"></span>
+          <button class="pa-btn pa-dm" data-act="dm"><span class="ic">✉️</span> Message</button>
         </div>
+        <div class="pa-likes" data-likes>0 likes</div>
+        ${p.caption ? `<div class="post-cap"><b>${esc(p.authorName || "Member")}</b> ${esc(p.caption)}</div>` : ""}
+        <button class="view-comments" data-act="comment"><span data-comments>View comments</span></button>
       </div>`;
     }).join("");
 
@@ -168,7 +190,7 @@
   function wirePost(card) {
     const id = card.dataset.id, by = card.dataset.by;
     const likesEl = $("[data-likes]", card), commentsEl = $("[data-comments]", card);
-    const likeBtn = $('[data-act="like"]', card);
+    const likeBtn = $('[data-act="like"]', card), likeIc = $(".ic", likeBtn);
 
     // live likes
     const likesRef = ref("postLikes/" + id);
@@ -176,7 +198,7 @@
       const n = s.numChildren();
       const mine = s.child(myUid).exists();
       likesEl.textContent = n + (n === 1 ? " like" : " likes");
-      likeBtn.textContent = mine ? "❤️ Liked" : "🤍 Like";
+      likeIc.textContent = mine ? "❤️" : "🤍";
       likeBtn.classList.toggle("liked", mine);
       likeBtn.dataset.mine = mine ? "1" : "";
     });
@@ -186,9 +208,12 @@
     const comRef = ref("postComments/" + id);
     const comCb = comRef.on("value", (s) => {
       const n = s.numChildren();
-      commentsEl.textContent = n + (n === 1 ? " comment" : " comments");
+      commentsEl.textContent = n === 0 ? "Add a comment…" : (n === 1 ? "View 1 comment" : `View all ${n} comments`);
     });
     listeners.push({ ref: comRef, ev: "value", cb: comCb });
+
+    // double-tap the photo to like
+    $(".post-img", card).ondblclick = () => { if (likeBtn.dataset.mine !== "1") toggleLike(id, false); };
 
     card.onclick = (e) => {
       const btn = e.target.closest("[data-act]"); if (!btn) return;
@@ -290,7 +315,10 @@
       composeImg = null; $("#cCap").value = ""; $("#cPreview").style.display = "none";
       closeAll(); toast("Posted!"); limit = 8; loadFeed();
     } catch (e) {
-      $("#cErr").textContent = "Couldn't post. The photo may be too large — try another.";
+      const denied = e && (e.code === "PERMISSION_DENIED" || /permission/i.test(e.message || ""));
+      $("#cErr").textContent = denied
+        ? "Posting is blocked — publish the updated Feed rules in Firebase, then try again."
+        : "Couldn't post: " + ((e && e.message) || "the photo may be too large. Try another.");
       $("#cErr").classList.add("show");
     }
     btn.disabled = false; btn.textContent = "Post";

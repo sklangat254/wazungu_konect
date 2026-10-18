@@ -102,7 +102,7 @@
       return `<div class="card member">
         ${avatarHTML(u, uid, online)}
         <div class="info">
-          <div class="name">${esc(u.name)} ${flag(u.country)}</div>
+          <div class="name"><a href="profile.html?u=${encodeURIComponent(uid)}" style="color:inherit">${esc(u.name)}</a> ${flag(u.country)}</div>
           <div class="status-text ${st.online ? "online" : ""}">${countryName(u.country) ? esc(countryName(u.country)) + " · " : ""}${st.text}</div>
           ${matchLine}
           ${u.bio ? `<p class="bio">${esc(u.bio)}</p>` : ""}

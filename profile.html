@@ -6,25 +6,50 @@
 <meta name="theme-color" content="#1f6f73">
 <title>Amoriva – Profile</title>
 <link rel="stylesheet" href="common.css">
+<style>
+  .pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .pcell { position: relative; aspect-ratio: 1 / 1; background: var(--surface-2); border-radius: 6px; overflow: hidden; cursor: pointer; }
+  .pcell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s; }
+  .pcell:hover img { transform: scale(1.05); }
+  .pcell .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 5px; font-size: .68rem; color: #fff;
+    background: linear-gradient(transparent, rgba(0,0,0,.6)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stats { display: flex; justify-content: center; gap: 30px; margin: 14px 0 2px; }
+  .stat { text-align: center; }
+  .stat b { display: block; font-size: 1.2rem; }
+  .stat span { font-size: .78rem; color: var(--muted); }
+  .grid-head { color: #fff; font-weight: 800; margin: 4px 4px 10px; font-size: 1rem; }
+</style>
 </head>
 <body>
 <div class="app has-nav">
   <div class="topbar">
-    <div class="brand"><div class="logo">💬</div>Profile</div>
+    <div class="brand"><div class="logo">💬</div><span id="topTitle">Profile</span></div>
+    <a class="icon-btn" id="backBtn" href="members.html" style="display:none">← Back</a>
   </div>
 
   <div class="card center" id="me"><div class="loader"></div></div>
 
-  <div class="card stack">
+  <!-- actions for my own profile -->
+  <div class="card stack hidden" id="myActions">
     <a class="btn btn-primary" href="setup.html?edit=1">✏️ Edit profile</a>
     <button class="btn btn-outline" id="themeBtn">🌙 Switch theme</button>
     <a class="btn btn-outline" href="terms.html">📄 Terms, rules &amp; privacy</a>
     <button class="btn btn-outline" id="logoutBtn">Log out</button>
   </div>
 
-  <div class="card">
+  <!-- actions for someone else's profile -->
+  <div class="card stack hidden" id="otherActions">
+    <a class="btn btn-primary" id="dmBtn">💬 Message</a>
+    <button class="btn btn-outline" id="blockBtn">🚫 Block</button>
+    <button class="btn btn-danger" id="reportBtn">⚠️ Report</button>
+  </div>
+
+  <div class="grid-head" id="gridHead">Posts</div>
+  <div id="posts"><div class="card"><div class="loader"></div></div></div>
+
+  <div class="card hidden" id="deleteCard">
     <h2>Delete account</h2>
-    <p class="muted small" style="margin:6px 0 14px">Permanently removes your profile, chat list and login. Messages you already sent stay visible to the people you sent them to.</p>
+    <p class="muted small" style="margin:6px 0 14px">Permanently removes your profile, posts list, chat list and login.</p>
     <button class="btn btn-danger" id="deleteBtn">Delete my account</button>
   </div>
 </div>
@@ -34,50 +59,123 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="common.js"></script>
 <script>
-  requireAuth().then(({ user, profile: p }) => {
+  const targetUid = new URLSearchParams(location.search).get("u");
+  let myUid, isMe;
+
+  requireAuth().then(async ({ user }) => {
+    myUid = user.uid;
+    const uid = targetUid || myUid;
+    isMe = uid === myUid;
     renderNav("profile");
+
+    let p;
+    if (isMe) { p = (await ref("users/" + myUid).once("value")).val(); }
+    else {
+      p = (await ref("users/" + uid).once("value")).val();
+      $("#backBtn").style.display = "";
+      $("#topTitle").textContent = "Member";
+    }
+    if (!p) { $("#me").innerHTML = `<div class="empty"><div class="big">🫥</div><h2>Member not found</h2></div>`; return; }
+
+    renderHeader(p, uid, user);
+    loadPosts(uid, p);
+
+    if (isMe) {
+      $("#myActions").classList.remove("hidden");
+      $("#deleteCard").classList.remove("hidden");
+      $("#gridHead").textContent = "My posts";
+      $("#themeBtn").onclick = toggleTheme;
+      $("#logoutBtn").onclick = logout;
+      wireDelete();
+    } else {
+      $("#otherActions").classList.remove("hidden");
+      $("#gridHead").textContent = `${esc(p.name)}'s posts`;
+      $("#dmBtn").href = "chat.html?u=" + encodeURIComponent(uid);
+      wireOther(uid, p);
+    }
+  });
+
+  function renderHeader(p, uid, user) {
     $("#me").innerHTML = `
-      <div style="display:flex;justify-content:center">${avatarHTML(p, user.uid, true, "lg")}</div>
+      <div style="display:flex;justify-content:center">${avatarHTML(p, uid, undefined, "lg")}</div>
       <h1 style="margin-top:12px">${esc(p.name)} ${flag(p.country)}</h1>
-      <p class="muted small">${esc(countryName(p.country))} · ${esc(user.email)}</p>
+      <p class="muted small">${esc(countryName(p.country))}${isMe ? " · " + esc(user.email) : ""}</p>
+      <div class="stats"><div class="stat"><b id="postCount">–</b><span>posts</span></div></div>
       ${p.bio ? `<p style="margin-top:12px">${esc(p.bio)}</p>` : ""}
       <div style="text-align:left;margin-top:14px">
         <div class="lang-row"><b>Speaks:</b> ${esc((p.speaks || []).join(", "))}</div>
         <div class="lang-row"><b>Learning:</b> ${esc((p.learning || []).join(", "))}</div>
         <div class="chips" style="margin-top:10px">${(p.interests || []).map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>
       </div>`;
-  });
+  }
 
-  $("#themeBtn").onclick = toggleTheme;
-  $("#logoutBtn").onclick = logout;
+  function loadPosts(uid) {
+    ref("posts").orderByChild("by").equalTo(uid).once("value").then((s) => {
+      const posts = [];
+      s.forEach((c) => posts.push({ id: c.key, ...c.val() }));
+      posts.sort((a, b) => (b.at || 0) - (a.at || 0));
+      const pc = $("#postCount"); if (pc) pc.textContent = posts.length;
+      const box = $("#posts");
+      if (!posts.length) {
+        box.innerHTML = `<div class="card empty"><div class="big">📷</div>
+          <p class="muted small">${isMe ? "You haven't posted yet. Share a photo from the Feed." : "No posts yet."}</p>
+          ${isMe ? `<a class="btn btn-primary btn-sm" href="feed.html" style="margin-top:12px">Go to Feed</a>` : ""}</div>`;
+        return;
+      }
+      box.innerHTML = `<div class="pgrid">` + posts.map((p) => `
+        <div class="pcell" onclick="location.href='feed.html?post=${esc(p.id)}'">
+          <img src="${esc(p.image)}" alt="" loading="lazy">
+          ${p.caption ? `<div class="cap">${esc(p.caption)}</div>` : ""}
+        </div>`).join("") + `</div>`;
+    }).catch((e) => {
+      $("#posts").innerHTML = `<div class="card empty"><div class="big">⚠️</div>
+        <p class="muted small">Couldn't load posts: ${esc(e.message || "error")}</p></div>`;
+    });
+  }
 
-  $("#deleteBtn").onclick = async () => {
-    if (!confirm("Delete your Amoriva account permanently? This can't be undone.")) return;
-    const user = auth.currentUser, uid = user.uid;
-    const btn = $("#deleteBtn"); btn.disabled = true; btn.textContent = "Deleting…";
-    try {
-      // Re-authenticate first so the final step can't fail halfway
-      const pass = prompt("Enter your password to confirm:");
-      if (!pass) { btn.disabled = false; btn.textContent = "Delete my account"; return; }
-      await user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, pass));
+  function wireOther(uid, p) {
+    ref(`blocks/${myUid}/${uid}`).once("value").then((s) => {
+      $("#blockBtn").textContent = s.exists() ? "✅ Unblock" : "🚫 Block";
+    });
+    $("#blockBtn").onclick = async () => {
+      const r = ref(`blocks/${myUid}/${uid}`);
+      const blocked = (await r.once("value")).exists();
+      if (blocked) { await r.remove(); toast("Unblocked"); $("#blockBtn").textContent = "🚫 Block"; }
+      else if (confirm(`Block ${p.name}?`)) { await r.set(true); toast("Blocked"); $("#blockBtn").textContent = "✅ Unblock"; }
+    };
+    $("#reportBtn").onclick = async () => {
+      try { await ref("reports").push({ by: myUid, against: uid, reason: "Reported from profile", at: TS }); toast("Thanks — report sent."); }
+      catch (e) { toast("Couldn't send report.", true); }
+    };
+  }
 
-      db.ref(".info/connected").off();
-      await ref("status/" + uid).onDisconnect().cancel();
-      await ref("users/" + uid + "/lastSeen").onDisconnect().cancel();
-      const updates = {};
-      updates["users/" + uid] = null;
-      updates["status/" + uid] = null;
-      updates["userChats/" + uid] = null;
-      updates["blocks/" + uid] = null;
-      await db.ref(ROOT).update(updates);
-      await user.delete();
-      alert("Your account has been deleted.");
-      location.replace("index.html");
-    } catch (e) {
-      toast(friendlyAuthError(e), true);
-      btn.disabled = false; btn.textContent = "Delete my account";
-    }
-  };
+  function wireDelete() {
+    $("#deleteBtn").onclick = async () => {
+      if (!confirm("Delete your Amoriva account permanently? This can't be undone.")) return;
+      const user = auth.currentUser, uid = user.uid;
+      const btn = $("#deleteBtn"); btn.disabled = true; btn.textContent = "Deleting…";
+      try {
+        const pass = prompt("Enter your password to confirm:");
+        if (!pass) { btn.disabled = false; btn.textContent = "Delete my account"; return; }
+        await user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, pass));
+        db.ref(".info/connected").off();
+        await ref("status/" + uid).onDisconnect().cancel();
+        await ref("users/" + uid + "/lastSeen").onDisconnect().cancel();
+        const updates = {};
+        updates["users/" + uid] = null;
+        updates["status/" + uid] = null;
+        updates["userChats/" + uid] = null;
+        updates["blocks/" + uid] = null;
+        await db.ref(ROOT).update(updates);
+        await user.delete();
+        alert("Your account has been deleted.");
+        location.replace("index.html");
+      } catch (e) {
+        toast(friendlyAuthError(e), true);
+        btn.disabled = false; btn.textContent = "Delete my account";
+      }
+    };
+  }
 </script>
 </body>
 </html>
