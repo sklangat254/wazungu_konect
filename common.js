@@ -115,6 +115,37 @@ function resizeImage(file, size = 256, quality = 0.72) {
   });
 }
 
+// Resize a photo for a feed post (keeps aspect ratio, caps the long side). Bigger
+// than an avatar but still compressed. Move to Firebase Storage when the feed grows.
+function resizePhoto(file, max = 1080, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) return reject(new Error("Please choose an image file."));
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Couldn't read that file."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("That image couldn't be loaded."));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > max) { height = Math.round(height * max / width); width = max; }
+        else if (height > max) { width = Math.round(width * max / height); height = max; }
+        const c = document.createElement("canvas");
+        c.width = width; c.height = height;
+        const ctx = c.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, width, height);
+        let out = c.toDataURL("image/jpeg", quality);
+        // keep under the DB rule cap (~400KB) by stepping quality down if needed
+        let q = quality;
+        while (out.length > 390000 && q > 0.4) { q -= 0.1; out = c.toDataURL("image/jpeg", q); }
+        resolve(out);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function timeAgo(ts) {
   if (!ts) return "";
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -239,6 +270,7 @@ function renderNav(active) {
   nav.className = "nav";
   nav.innerHTML = `<div class="inner">
     <a href="members.html" class="${active === "members" ? "on" : ""}"><span class="ic">🌍</span>Members</a>
+    <a href="feed.html" class="${active === "feed" ? "on" : ""}"><span class="ic">📸</span>Feed</a>
     <a href="chats.html" class="${active === "chats" ? "on" : ""}"><span class="ic">💬</span>Chats<span class="badge hidden" id="navUnread"></span></a>
     <a href="profile.html" class="${active === "profile" ? "on" : ""}"><span class="ic">👤</span>Profile</a>
   </div>`;

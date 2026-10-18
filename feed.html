@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f73">
+<title>Amoriva – Feed</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .post { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
+  .post-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+  .post-head .info { flex: 1; min-width: 0; }
+  .post-head .name { font-weight: 800; }
+  .post-head .time { font-size: .78rem; color: var(--muted); }
+  .post-head .more { background: none; border: 0; color: var(--muted); font-size: 1.4rem; cursor: pointer; padding: 0 6px; }
+  .post-img { width: 100%; display: block; background: var(--surface-2); }
+  .post-cap { padding: 12px 16px 4px; font-size: .95rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+  .post-actions { display: flex; gap: 6px; padding: 8px 10px 12px; }
+  .pa-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; background: none; border: 0; color: var(--muted); font-weight: 700; font-size: .88rem; cursor: pointer; padding: 9px; border-radius: 12px; }
+  .pa-btn:hover { background: var(--surface-2); }
+  .pa-btn.liked { color: var(--danger); }
+  .pa-count { padding: 0 16px 10px; font-size: .82rem; color: var(--muted); display: flex; gap: 14px; }
+  .fab { position: fixed; right: 18px; bottom: calc(var(--nav-h) + 18px); width: 60px; height: 60px; border-radius: 50%; background: var(--primary); color: var(--primary-ink); border: 0; font-size: 1.8rem; box-shadow: var(--shadow); cursor: pointer; z-index: 40; display: grid; place-items: center; }
+  .comment { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .comment:last-child { border-bottom: 0; }
+  .comment .c-body { flex: 1; min-width: 0; }
+  .comment .c-name { font-weight: 700; font-size: .85rem; }
+  .comment .c-text { font-size: .9rem; line-height: 1.45; word-wrap: break-word; }
+  .comment .c-time { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+  .preview-img { width: 100%; border-radius: 14px; margin-bottom: 12px; display: none; }
+  .comments-list { max-height: 48vh; overflow-y: auto; margin-bottom: 12px; }
+  .comment-bar { display: flex; gap: 8px; }
+  .comment-bar input { flex: 1; }
+  .comment-bar .btn { width: auto; padding: 0 18px; }
+</style>
+</head>
+<body>
+<div class="app has-nav">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div>Feed</div>
+    <a class="icon-btn" href="members.html" id="allLink" style="display:none">← All posts</a>
+  </div>
+
+  <div id="ad1"></div>
+  <div id="list"><div class="card"><div class="loader"></div></div></div>
+  <div id="more" class="hidden" style="margin-bottom:20px"><button class="btn btn-outline" id="moreBtn">Load more</button></div>
+</div>
+
+<button class="fab" id="fab" title="New post">＋</button>
+
+<!-- Compose sheet -->
+<div class="sheet-bg" id="compose">
+  <div class="sheet">
+    <h3>Share a photo</h3>
+    <div class="error" id="cErr"></div>
+    <img class="preview-img" id="cPreview" alt="">
+    <input type="file" id="cFile" accept="image/*" hidden>
+    <button class="btn btn-outline" id="cPick" style="margin-bottom:12px">📷 Choose a photo</button>
+    <div class="field"><textarea class="input" id="cCap" maxlength="500" placeholder="Say something about it… (optional)"></textarea></div>
+    <p class="small muted" style="margin-bottom:12px">Only post photos you took or have the right to share. No nudity, no other people's private info.</p>
+    <div class="stack">
+      <button class="btn btn-primary" id="cPost" disabled>Post</button>
+      <button class="btn btn-outline" data-close>Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comments sheet -->
+<div class="sheet-bg" id="commentsSheet">
+  <div class="sheet">
+    <h3>Comments</h3>
+    <div class="comments-list" id="cmList"></div>
+    <div class="comment-bar">
+      <input class="input" id="cmInput" maxlength="500" placeholder="Add a comment…">
+      <button class="btn btn-primary" id="cmSend">Send</button>
+    </div>
+    <button class="btn btn-outline" data-close style="margin-top:10px">Close</button>
+  </div>
+</div>
+
+<!-- Post menu sheet -->
+<div class="sheet-bg" id="postMenu">
+  <div class="sheet stack">
+    <button class="btn btn-outline" id="pmMessage">💬 Message this member</button>
+    <button class="btn btn-outline" id="pmShare">🔗 Share</button>
+    <button class="btn btn-danger" id="pmReport">⚠️ Report post</button>
+    <button class="btn btn-danger hidden" id="pmDelete">🗑️ Delete my post</button>
+    <button class="btn btn-outline" data-close>Close</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  let myUid, me, limit = 8, composeImg = null, activePost = null, singleId = null;
+  const listeners = [];
+
+  singleId = new URLSearchParams(location.search).get("post");
+
+  requireAuth().then(({ user, profile }) => {
+    myUid = user.uid; me = profile;
+    renderNav("feed");
+    renderAd($("#ad1"));
+    if (singleId) { $("#allLink").style.display = ""; loadSingle(singleId); }
+    else loadFeed();
+  });
+
+  /* ---------- Load ---------- */
+  function clearListeners() { listeners.forEach((l) => l.ref.off(l.ev, l.cb)); listeners.length = 0; }
+
+  function loadFeed() {
+    ref("posts").orderByChild("at").limitToLast(limit).once("value").then((s) => {
+      const posts = [];
+      s.forEach((c) => posts.push({ id: c.key, ...c.val() }));
+      posts.reverse();
+      render(posts);
+      $("#more").classList.toggle("hidden", posts.length < limit);
+    });
+  }
+
+  function loadSingle(id) {
+    ref("posts/" + id).once("value").then((s) => {
+      if (!s.exists()) { $("#list").innerHTML = `<div class="card empty"><div class="big">🫥</div><h2>Post not found</h2><p class="muted small">It may have been deleted.</p></div>`; return; }
+      render([{ id, ...s.val() }]);
+    });
+  }
+
+  $("#moreBtn").onclick = () => { limit += 8; loadFeed(); };
+
+  /* ---------- Render ---------- */
+  function render(posts) {
+    clearListeners();
+    const list = $("#list");
+    if (!posts.length) {
+      list.innerHTML = `<div class="card empty"><div class="big">📸</div><h2>No posts yet</h2>
+        <p class="muted small" style="margin:8px 0 16px">Be the first to share a photo from where you are.</p>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('fab').click()">Share a photo</button></div>`;
+      return;
+    }
+    list.innerHTML = posts.map((p) => {
+      const author = { name: p.authorName, photo: p.authorPhoto };
+      return `<div class="post" data-id="${esc(p.id)}" data-by="${esc(p.by)}" data-name="${esc(p.authorName || "")}">
+        <div class="post-head">
+          ${avatarHTML(author, p.by)}
+          <div class="info">
+            <div class="name">${esc(p.authorName || "Member")} ${flag(p.authorCountry)}</div>
+            <div class="time">${timeAgo(p.at)}</div>
+          </div>
+          <button class="more" data-act="menu">⋯</button>
+        </div>
+        <img class="post-img" src="${esc(p.image)}" alt="" loading="lazy">
+        ${p.caption ? `<div class="post-cap">${esc(p.caption)}</div>` : ""}
+        <div class="pa-count"><span data-likes>0 likes</span><span data-comments>0 comments</span></div>
+        <div class="post-actions">
+          <button class="pa-btn" data-act="like">🤍 Like</button>
+          <button class="pa-btn" data-act="comment">💬 Comment</button>
+          <button class="pa-btn" data-act="share">🔗 Share</button>
+          <button class="pa-btn" data-act="dm">✉️ Message</button>
+        </div>
+      </div>`;
+    }).join("");
+
+    $$(".post", list).forEach((card) => wirePost(card));
+  }
+
+  function wirePost(card) {
+    const id = card.dataset.id, by = card.dataset.by;
+    const likesEl = $("[data-likes]", card), commentsEl = $("[data-comments]", card);
+    const likeBtn = $('[data-act="like"]', card);
+
+    // live likes
+    const likesRef = ref("postLikes/" + id);
+    const likesCb = likesRef.on("value", (s) => {
+      const n = s.numChildren();
+      const mine = s.child(myUid).exists();
+      likesEl.textContent = n + (n === 1 ? " like" : " likes");
+      likeBtn.textContent = mine ? "❤️ Liked" : "🤍 Like";
+      likeBtn.classList.toggle("liked", mine);
+      likeBtn.dataset.mine = mine ? "1" : "";
+    });
+    listeners.push({ ref: likesRef, ev: "value", cb: likesCb });
+
+    // live comment count
+    const comRef = ref("postComments/" + id);
+    const comCb = comRef.on("value", (s) => {
+      const n = s.numChildren();
+      commentsEl.textContent = n + (n === 1 ? " comment" : " comments");
+    });
+    listeners.push({ ref: comRef, ev: "value", cb: comCb });
+
+    card.onclick = (e) => {
+      const btn = e.target.closest("[data-act]"); if (!btn) return;
+      const act = btn.dataset.act;
+      if (act === "like") toggleLike(id, btn.dataset.mine === "1");
+      else if (act === "comment") openComments(id);
+      else if (act === "share") sharePost(id, card.dataset.name);
+      else if (act === "dm") location.href = "chat.html?u=" + encodeURIComponent(by);
+      else if (act === "menu") openMenu(id, by, card.dataset.name);
+    };
+  }
+
+  /* ---------- Like ---------- */
+  async function toggleLike(id, mine) {
+    const r = ref(`postLikes/${id}/${myUid}`);
+    try { mine ? await r.remove() : await r.set(true); }
+    catch (e) { toast("Couldn't update like.", true); }
+  }
+
+  /* ---------- Comments ---------- */
+  function openComments(id) {
+    activePost = id;
+    const box = $("#cmList");
+    box.innerHTML = `<div class="loader"></div>`;
+    ref("postComments/" + id).orderByChild("at").on("value", (s) => {
+      const items = [];
+      s.forEach((c) => items.push({ id: c.key, ...c.val() }));
+      if (!items.length) { box.innerHTML = `<p class="muted small center">No comments yet. Say hello!</p>`; }
+      else box.innerHTML = items.map((c) => `<div class="comment">
+        ${avatarHTML({ name: c.name }, c.by)}
+        <div class="c-body"><div class="c-name">${esc(c.name || "Member")}</div>
+        <div class="c-text">${esc(c.text)}</div><div class="c-time">${timeAgo(c.at)}</div></div>
+      </div>`).join("");
+      box.scrollTop = box.scrollHeight;
+    });
+    open("commentsSheet");
+  }
+
+  $("#cmSend").onclick = async () => {
+    const text = $("#cmInput").value.trim();
+    if (!text || !activePost) return;
+    $("#cmInput").value = "";
+    try {
+      await ref("postComments/" + activePost).push({ by: myUid, name: me.name, text, at: TS });
+    } catch (e) { toast("Couldn't post comment.", true); $("#cmInput").value = text; }
+  };
+  $("#cmInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#cmSend").click(); });
+
+  /* ---------- Share ---------- */
+  function sharePost(id, name) {
+    const url = location.origin + "/feed.html?post=" + id;
+    const data = { title: "Amoriva", text: (name ? name + "'s post on Amoriva" : "A post on Amoriva"), url };
+    if (navigator.share) navigator.share(data).catch(() => {});
+    else { navigator.clipboard?.writeText(url); toast("Link copied"); }
+  }
+
+  /* ---------- Post menu ---------- */
+  function openMenu(id, by, name) {
+    activePost = id;
+    $("#pmMessage").onclick = () => location.href = "chat.html?u=" + encodeURIComponent(by);
+    $("#pmShare").onclick = () => { closeAll(); sharePost(id, name); };
+    $("#pmReport").onclick = async () => {
+      try { await ref("reports").push({ by: myUid, against: by, postId: id, reason: "Reported post", at: TS }); toast("Thanks — report sent."); }
+      catch (e) { toast("Couldn't send report.", true); }
+      closeAll();
+    };
+    const del = $("#pmDelete");
+    del.classList.toggle("hidden", by !== myUid);
+    del.onclick = async () => {
+      if (!confirm("Delete this post?")) return;
+      try { await ref("posts/" + id).remove(); toast("Post deleted"); closeAll(); singleId ? location.href = "feed.html" : loadFeed(); }
+      catch (e) { toast("Couldn't delete.", true); }
+    };
+    open("postMenu");
+  }
+
+  /* ---------- Compose ---------- */
+  $("#fab").onclick = () => { $("#cErr").classList.remove("show"); open("compose"); };
+  $("#cPick").onclick = () => $("#cFile").click();
+  $("#cFile").onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      composeImg = await resizePhoto(f);
+      $("#cPreview").src = composeImg; $("#cPreview").style.display = "block";
+      $("#cPost").disabled = false;
+    } catch (ex) { $("#cErr").textContent = ex.message; $("#cErr").classList.add("show"); }
+    e.target.value = "";
+  };
+  $("#cPost").onclick = async () => {
+    if (!composeImg) return;
+    const btn = $("#cPost"); btn.disabled = true; btn.textContent = "Posting…";
+    try {
+      const id = ref("posts").push().key;
+      await ref("posts/" + id).set({
+        by: myUid, authorName: me.name, authorPhoto: me.photo || null,
+        authorCountry: me.country || null, image: composeImg,
+        caption: $("#cCap").value.trim(), at: TS
+      });
+      composeImg = null; $("#cCap").value = ""; $("#cPreview").style.display = "none";
+      closeAll(); toast("Posted!"); limit = 8; loadFeed();
+    } catch (e) {
+      $("#cErr").textContent = "Couldn't post. The photo may be too large — try another.";
+      $("#cErr").classList.add("show");
+    }
+    btn.disabled = false; btn.textContent = "Post";
+  };
+
+  /* ---------- Sheets ---------- */
+  const open = (id) => $("#" + id).classList.add("show");
+  const closeAll = () => { $$(".sheet-bg").forEach((s) => s.classList.remove("show")); ref("postComments").off(); };
+  $$("[data-close]").forEach((b) => b.onclick = closeAll);
+  $$(".sheet-bg").forEach((bg) => bg.onclick = (e) => { if (e.target === bg) closeAll(); });
+</script>
+</body>
+</html>
