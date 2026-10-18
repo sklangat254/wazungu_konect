@@ -19,6 +19,16 @@ const ROOT = "amoriva";
 // 2) Ads — Google AdSense. Leave empty to hide ad slots until approved.
 const ADS = { client: "", slot: "" }; // e.g. client: "ca-pub-1234567890", slot: "9876543210"
 
+// 3) Video-call ICE servers. STUN works for many networks out of the box.
+//    For reliable calls on mobile data (Safaricom etc.) add a TURN server — get free
+//    credentials at https://www.metered.ca (Open Relay) or self-host coturn, then
+//    uncomment and fill the TURN entry below.
+const ICE_SERVERS = [
+  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
+  // , { urls: "turn:YOUR_TURN_HOST:3478", username: "YOUR_USER", credential: "YOUR_PASS" }
+  // , { urls: "turn:YOUR_TURN_HOST:443?transport=tcp", username: "YOUR_USER", credential: "YOUR_PASS" }
+];
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
@@ -228,6 +238,7 @@ function requireAuth({ needProfile = true } = {}) {
       if (needProfile && (!profile || !profile.profileComplete)) { location.replace("setup.html"); return; }
       CURRENT = { user, profile };
       startPresence(user.uid);
+      if (!/call\.html$/.test(location.pathname)) listenForCalls(user.uid);
       resolve(CURRENT);
     });
   });
@@ -253,6 +264,44 @@ async function logout() {
   }
   await auth.signOut();
   location.replace("index.html");
+}
+
+/* ---------- Incoming video calls (app-wide ring) ---------- */
+let _incomingShown = null;
+function listenForCalls(uid) {
+  ref("ring/" + uid).on("value", (s) => {
+    const v = s.val();
+    if (!v || !v.callId) { hideIncoming(); return; }
+    if (_incomingShown === v.callId) return;
+    ref("calls/" + v.callId + "/status").once("value").then((st) => {
+      if (st.val() === "ringing") showIncoming(v, uid);
+    });
+  });
+}
+function showIncoming(v, uid) {
+  _incomingShown = v.callId;
+  let el = document.getElementById("incomingCall");
+  if (!el) { el = document.createElement("div"); el.id = "incomingCall"; document.body.appendChild(el); }
+  el.setAttribute("style", "position:fixed;inset:0;z-index:999;background:rgba(6,30,32,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;text-align:center;padding:24px");
+  el.innerHTML = `
+    <div style="font-size:3rem">📹</div>
+    <div style="font-size:1.3rem;font-weight:800">${esc(v.callerName || "Someone")}</div>
+    <div style="opacity:.8">is video-calling you…</div>
+    <div style="display:flex;gap:16px;margin-top:10px">
+      <button id="icDecline" style="background:#d64545;color:#fff;border:0;border-radius:999px;padding:14px 26px;font-weight:700;font-size:1rem;cursor:pointer">Decline</button>
+      <button id="icAccept" style="background:#22a55a;color:#fff;border:0;border-radius:999px;padding:14px 26px;font-weight:700;font-size:1rem;cursor:pointer">Accept</button>
+    </div>`;
+  document.getElementById("icAccept").onclick = () => { location.href = "call.html?id=" + encodeURIComponent(v.callId) + "&role=callee"; };
+  document.getElementById("icDecline").onclick = async () => {
+    try { await ref("calls/" + v.callId + "/status").set("declined"); await ref("ring/" + uid).remove(); } catch (e) {}
+    hideIncoming();
+  };
+  try { navigator.vibrate && navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
+}
+function hideIncoming() {
+  _incomingShown = null;
+  const el = document.getElementById("incomingCall"); if (el) el.remove();
+  try { navigator.vibrate && navigator.vibrate(0); } catch (e) {}
 }
 
 /* ---------- Blocks ---------- */

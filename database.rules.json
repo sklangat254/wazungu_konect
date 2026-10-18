@@ -93,6 +93,20 @@
             ".validate": "newData.hasChildren(['by','text','at']) && newData.child('by').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 500 && newData.child('at').val() <= now"
           }
         }
+      },
+
+      "calls": {
+        "$callId": {
+          ".read": "auth != null && (data.child('caller').val() === auth.uid || data.child('callee').val() === auth.uid)",
+          ".write": "auth != null && ((!data.exists() && newData.child('caller').val() === auth.uid) || data.child('caller').val() === auth.uid || data.child('callee').val() === auth.uid)"
+        }
+      },
+
+      "ring": {
+        "$uid": {
+          ".read": "auth != null && $uid === auth.uid",
+          ".write": "auth != null && ($uid === auth.uid || (newData.exists() && newData.child('caller').val() === auth.uid) || (data.exists() && data.child('caller').val() === auth.uid))"
+        }
       }
     }
   }

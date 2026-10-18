@@ -16,6 +16,7 @@
       <div class="name" id="headName">…</div>
       <div class="status-text" id="headStatus"></div>
     </div>
+    <button class="icon-btn" id="callBtn" title="Video call" style="margin-right:6px">📹</button>
     <button class="icon-btn" id="menuBtn">⋯</button>
   </div>
 
@@ -188,6 +189,19 @@
   const open = (id) => $("#" + id).classList.add("show");
   const closeAll = () => $$(".sheet-bg").forEach((s) => s.classList.remove("show"));
   $("#menuBtn").onclick = () => open("menu");
+
+  $("#callBtn").onclick = async () => {
+    if (!other || iBlocked || theyBlocked) { toast("You can't call this member.", true); return; }
+    const callId = ref("calls").push().key;
+    try {
+      await ref("calls/" + callId).set({
+        caller: myUid, callerName: me.name, callee: otherUid, calleeName: other.name,
+        status: "ringing", at: TS
+      });
+      await ref("ring/" + otherUid).set({ callId, caller: myUid, callerName: me.name });
+      location.href = "call.html?id=" + encodeURIComponent(callId) + "&role=caller";
+    } catch (e) { toast("Couldn't start the call.", true); }
+  };
   $$("[data-close]").forEach((b) => b.onclick = closeAll);
   $$(".sheet-bg").forEach((bg) => bg.onclick = (e) => { if (e.target === bg) closeAll(); });
 

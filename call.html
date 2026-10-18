@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06282a">
+<title>Amoriva – Call</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  html, body { height: 100%; background: #06282a; overflow: hidden; }
+  .call { position: fixed; inset: 0; background: #06282a; display: flex; flex-direction: column; }
+  #remote { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #06282a; }
+  #local { position: absolute; top: 16px; right: 16px; width: 110px; height: 150px; object-fit: cover;
+    border-radius: 14px; border: 2px solid rgba(255,255,255,.7); background: #0d3b3e; z-index: 3; transform: scaleX(-1); }
+  .overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 10px; color: #fff; text-align: center; padding: 24px;
+    background: radial-gradient(circle at 50% 35%, rgba(6,40,42,.25), rgba(6,40,42,.75)); }
+  .overlay.hidden { display: none; }
+  .overlay .av { width: 110px; height: 110px; border-radius: 50%; background: #1f6f73; display: grid; place-items: center;
+    font-size: 2.6rem; font-weight: 800; margin-bottom: 8px; }
+  .overlay h2 { font-size: 1.5rem; }
+  .overlay p { opacity: .85; }
+  .status-pill { position: absolute; top: 16px; left: 16px; z-index: 4; background: rgba(0,0,0,.4); color: #fff;
+    padding: 7px 14px; border-radius: 999px; font-size: .85rem; font-weight: 700; }
+  .controls { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; justify-content: center;
+    gap: 18px; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
+  .cbtn { width: 62px; height: 62px; border-radius: 50%; border: 0; font-size: 1.5rem; cursor: pointer; color: #fff;
+    background: rgba(255,255,255,.18); display: grid; place-items: center; }
+  .cbtn.off { background: #ffffff; color: #13202b; }
+  .cbtn.end { background: #d64545; }
+  .err { color: #ffd9a8; max-width: 320px; }
+</style>
+</head>
+<body>
+<div class="call">
+  <video id="remote" autoplay playsinline></video>
+  <video id="local" autoplay playsinline muted></video>
+  <div class="status-pill" id="statusPill">Connecting…</div>
+
+  <div class="overlay" id="overlay">
+    <div class="av" id="ovAv">🙂</div>
+    <h2 id="ovName">…</h2>
+    <p id="ovMsg">Connecting…</p>
+    <p class="err" id="ovErr"></p>
+  </div>
+
+  <div class="controls">
+    <button class="cbtn" id="micBtn" title="Mute">🎙️</button>
+    <button class="cbtn" id="camBtn" title="Camera">📷</button>
+    <button class="cbtn end" id="endBtn" title="End call">📞</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const callId = params.get("id");
+  const role = params.get("role"); // "caller" | "callee"
+  const isCaller = role === "caller";
+  let myUid, callRef, pc, localStream, remoteSet = false, pending = [], ended = false, peerUid = null, ringTimeout = null;
+
+  const setStatus = (t) => { $("#statusPill").textContent = t; $("#ovMsg").textContent = t; };
+  const showErr = (t) => { $("#ovErr").textContent = t; };
+
+  requireAuth().then(async ({ user, profile }) => {
+    myUid = user.uid;
+    if (!callId) { location.replace("members.html"); return; }
+    callRef = ref("calls/" + callId);
+
+    const callData = (await callRef.once("value")).val();
+    if (!callData) { setStatus("Call not found"); setTimeout(leave, 1500); return; }
+    peerUid = isCaller ? callData.callee : callData.caller;
+    const peerName = isCaller ? (callData.calleeName || "Member") : (callData.callerName || "Member");
+    $("#ovName").textContent = peerName;
+    $("#ovAv").textContent = (peerName[0] || "?").toUpperCase();
+    setStatus(isCaller ? "Ringing…" : "Connecting…");
+
+    // Tear down if the other side declines/ends
+    callRef.child("status").on("value", (s) => {
+      const st = s.val();
+      if (st === "declined") { setStatus("Call declined"); endLocal(1200); }
+      else if (st === "ended" && remoteSet === false && !isCaller) { /* ignore early */ }
+      else if (st === "ended") { setStatus("Call ended"); endLocal(900); }
+    });
+
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch (e) {
+      showErr("Camera/microphone blocked. Allow access in your browser settings, then try again.");
+      setStatus("No camera access");
+      return;
+    }
+    $("#local").srcObject = localStream;
+
+    pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
+
+    pc.ontrack = (e) => {
+      $("#remote").srcObject = e.streams[0];
+      $("#overlay").classList.add("hidden");
+      setStatus("Connected");
+    };
+    pc.onicecandidate = (e) => {
+      if (!e.candidate) return;
+      const node = isCaller ? "callerCandidates" : "calleeCandidates";
+      callRef.child(node).push(e.candidate.toJSON());
+    };
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "connected") setStatus("Connected");
+      if (["failed", "disconnected"].includes(pc.connectionState)) setStatus("Connection lost");
+    };
+
+    if (isCaller) await runCaller(); else await runCallee();
+  });
+
+  async function runCaller() {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await callRef.child("offer").set({ type: offer.type, sdp: offer.sdp });
+
+    callRef.child("answer").on("value", async (s) => {
+      if (s.exists() && !pc.currentRemoteDescription) {
+        await pc.setRemoteDescription(new RTCSessionDescription(s.val()));
+        remoteSet = true; flushPending();
+        setStatus("Connecting…");
+      }
+    });
+    listenCandidates("calleeCandidates");
+
+    // No answer after 35s → give up
+    ringTimeout = setTimeout(() => { if (!remoteSet) { setStatus("No answer"); hangUp(); } }, 35000);
+  }
+
+  async function runCallee() {
+    try { await ref("ring/" + myUid).remove(); } catch (e) {}
+    await callRef.child("status").set("accepted");
+
+    callRef.child("offer").on("value", async (s) => {
+      if (s.exists() && !pc.currentRemoteDescription) {
+        await pc.setRemoteDescription(new RTCSessionDescription(s.val()));
+        remoteSet = true; flushPending();
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await callRef.child("answer").set({ type: answer.type, sdp: answer.sdp });
+      }
+    });
+    listenCandidates("callerCandidates");
+  }
+
+  function listenCandidates(node) {
+    callRef.child(node).on("child_added", (s) => {
+      const c = s.val(); if (!c) return;
+      if (remoteSet) pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+      else pending.push(c);
+    });
+  }
+  function flushPending() { pending.forEach((c) => pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})); pending = []; }
+
+  /* Controls */
+  let micOn = true, camOn = true;
+  $("#micBtn").onclick = () => {
+    micOn = !micOn; localStream && localStream.getAudioTracks().forEach((t) => t.enabled = micOn);
+    $("#micBtn").classList.toggle("off", !micOn); $("#micBtn").textContent = micOn ? "🎙️" : "🔇";
+  };
+  $("#camBtn").onclick = () => {
+    camOn = !camOn; localStream && localStream.getVideoTracks().forEach((t) => t.enabled = camOn);
+    $("#camBtn").classList.toggle("off", !camOn); $("#camBtn").textContent = camOn ? "📷" : "🚫";
+  };
+  $("#endBtn").onclick = hangUp;
+
+  async function hangUp() {
+    if (ended) return;
+    try { await callRef.child("status").set("ended"); } catch (e) {}
+    try { if (!isCaller) await ref("ring/" + myUid).remove(); else await ref("ring/" + peerUid).remove(); } catch (e) {}
+    endLocal(300);
+    // clean up the call node shortly after
+    setTimeout(() => { try { callRef.remove(); } catch (e) {} }, 2500);
+  }
+
+  function endLocal(delay = 0) {
+    if (ended) return; ended = true;
+    clearTimeout(ringTimeout);
+    try { pc && pc.close(); } catch (e) {}
+    try { localStream && localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+    setTimeout(leave, delay);
+  }
+  function leave() {
+    const back = peerUid ? "chat.html?u=" + encodeURIComponent(peerUid) : "members.html";
+    location.replace(back);
+  }
+
+  window.addEventListener("beforeunload", () => { try { callRef && callRef.child("status").set("ended"); } catch (e) {} });
+</script>
+</body>
+</html>
