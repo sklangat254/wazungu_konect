@@ -39,8 +39,8 @@ const COINS = {
   welcome: 10,        // one-time free coins for a new account
   adReward: 10,       // coins granted per rewarded ad (credited by your backend)
   buyCoins: 30,       // coins per purchase
-  buyPriceUSD: 1,     // price of a purchase
-  backendUrl: ""      // e.g. "https://amoriva-api.onrender.com" (handles PayHero + crediting)
+  priceLabel: "KES 130", // shown on the buy button (match PRICE_AMOUNT on the backend)
+  backendUrl: ""      // e.g. "https://amoriva-api.onrender.com" (IntaSend + crediting)
 };
 
 const coinsRef = (uid) => ref("users/" + uid + "/coins");

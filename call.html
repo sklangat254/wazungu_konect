@@ -186,7 +186,7 @@
 
   /* Coins / billing — only the CALLER pays; the callee is free */
   let billing = false, billTimer = null, graceTimer = null, coinsNow = 0, coinsWatching = false;
-  $("#tuBuy").textContent = `Buy ${COINS.buyCoins} coins ($${COINS.buyPriceUSD})`;
+  $("#tuBuy").textContent = `Buy ${COINS.buyCoins} coins (${COINS.priceLabel})`;
 
   function watchCoins() {
     coinsRef(myUid).on("value", (s) => {

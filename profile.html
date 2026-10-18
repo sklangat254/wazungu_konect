@@ -166,7 +166,7 @@
 
   function wireWallet() {
     coinsRef(myUid).on("value", (s) => { $("#coinBal").textContent = s.val() || 0; });
-    $("#buyBtn").textContent = `Buy ${COINS.buyCoins} coins ($${COINS.buyPriceUSD})`;
+    $("#buyBtn").textContent = `Buy ${COINS.buyCoins} coins (${COINS.priceLabel})`;
     $("#buyBtn").onclick = () => requestCoins("buy");
     $("#adBtn").onclick = () => requestCoins("ad");
   }
