@@ -192,6 +192,12 @@
 
   $("#callBtn").onclick = async () => {
     if (!other || iBlocked || theyBlocked) { toast("You can't call this member.", true); return; }
+    const coins = await getCoins(myUid);
+    if (coins < 1) {
+      if (confirm("You need coins to start a video call (the person you call is free). Go to your wallet to get coins?"))
+        location.href = "profile.html#wallet";
+      return;
+    }
     const callId = ref("calls").push().key;
     try {
       await ref("calls/" + callId).set({

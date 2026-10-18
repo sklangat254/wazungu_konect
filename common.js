@@ -29,6 +29,70 @@ const ICE_SERVERS = [
   // , { urls: "turn:YOUR_TURN_HOST:443?transport=tcp", username: "YOUR_USER", credential: "YOUR_PASS" }
 ];
 
+// 4) Call coins. The CALLER spends coins per minute; the person received is free.
+//    IMPORTANT: coins can only be SPENT from the app (enforced by the database rules).
+//    Adding coins (after a real card payment or a watched rewarded ad) must be done by your
+//    backend using the Firebase Admin SDK, AFTER it verifies the Stripe payment webhook
+//    or the AdMob rewarded-ad server-side verification. Set backendUrl to that service.
+const COINS = {
+  perMinute: 1,       // coins the caller spends for each minute of video call
+  welcome: 10,        // one-time free coins for a new account
+  adReward: 10,       // coins granted per rewarded ad (credited by your backend)
+  buyCoins: 30,       // coins per purchase
+  buyPriceUSD: 1,     // price of a purchase
+  backendUrl: ""      // e.g. "https://amoriva-api.onrender.com" (handles PayHero + crediting)
+};
+
+const coinsRef = (uid) => ref("users/" + uid + "/coins");
+
+async function getCoins(uid) {
+  const s = await coinsRef(uid || auth.currentUser.uid).once("value");
+  return s.val() || 0;
+}
+// Give a new account its one-time welcome coins (allowed once by the rules).
+async function ensureWelcomeCoins(uid) {
+  try {
+    const r = coinsRef(uid);
+    const s = await r.once("value");
+    if (!s.exists()) await r.set(COINS.welcome);
+  } catch (e) {}
+}
+// Spend coins (decrement, never below 0). Allowed by the rules because it only decreases.
+async function spendCoins(uid, n = 1) {
+  const res = await coinsRef(uid).transaction((c) => {
+    c = c || 0;
+    return c <= 0 ? 0 : Math.max(0, c - n);
+  });
+  return res.snapshot.val() || 0;
+}
+// Ask YOUR backend to credit coins. kind = "buy" (PayHero STK) or "ad" (AdMob reward).
+// The backend must verify first, then credit with the Admin SDK — never trust the client.
+async function requestCoins(kind) {
+  if (kind === "ad") {
+    // Rewarded ads only work inside the Amoriva Android app (AdMob). The app injects
+    // a bridge; on the plain website we can't show a rewarded ad honestly.
+    if (window.AmorivaAds && typeof window.AmorivaAds.showRewarded === "function") {
+      window.AmorivaAds.showRewarded(); // app shows ad; AdMob SSV tells backend to credit
+      toast("Loading ad…");
+      return true;
+    }
+    toast("Rewarded ads are available in the Amoriva Android app.", true);
+    return false;
+  }
+  if (!COINS.backendUrl) { toast("Buying coins isn't set up yet.", true); return false; }
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const res = await fetch(COINS.backendUrl.replace(/\/$/, "") + "/coins/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({ coins: COINS.buyCoins })
+    });
+    const data = await res.json();
+    if (data && data.url) { location.href = data.url; return true; }  // go to Stripe Checkout
+    throw new Error("no url");
+  } catch (e) { toast("Couldn't start the payment.", true); return false; }
+}
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
@@ -238,6 +302,7 @@ function requireAuth({ needProfile = true } = {}) {
       if (needProfile && (!profile || !profile.profileComplete)) { location.replace("setup.html"); return; }
       CURRENT = { user, profile };
       startPresence(user.uid);
+      ensureWelcomeCoins(user.uid);
       if (!/call\.html$/.test(location.pathname)) listenForCalls(user.uid);
       resolve(CURRENT);
     });

@@ -22,6 +22,18 @@
   .overlay p { opacity: .85; }
   .status-pill { position: absolute; top: 16px; left: 16px; z-index: 4; background: rgba(0,0,0,.4); color: #fff;
     padding: 7px 14px; border-radius: 999px; font-size: .85rem; font-weight: 700; }
+  .coin-pill { position: absolute; top: 54px; left: 16px; z-index: 4; background: rgba(0,0,0,.4); color: #ffd9a8;
+    padding: 6px 13px; border-radius: 999px; font-size: .82rem; font-weight: 800; display: none; }
+  .topup { position: absolute; inset: 0; z-index: 8; background: rgba(6,40,42,.95); display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px; color: #fff; text-align: center; padding: 28px; }
+  .topup.show { display: flex; }
+  .topup h2 { font-size: 1.5rem; }
+  .topup .opts { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; margin-top: 8px; }
+  .topup .opt { background: var(--primary); color: #fff; border: 0; border-radius: 999px; padding: 15px; font-weight: 700;
+    font-size: 1rem; cursor: pointer; }
+  .topup .opt.ghost { background: rgba(255,255,255,.14); }
+  .topup .opt.end { background: #d64545; }
+  .topup small { opacity: .75; }
   .controls { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; justify-content: center;
     gap: 18px; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
   .cbtn { width: 62px; height: 62px; border-radius: 50%; border: 0; font-size: 1.5rem; cursor: pointer; color: #fff;
@@ -36,6 +48,18 @@
   <video id="remote" autoplay playsinline></video>
   <video id="local" autoplay playsinline muted></video>
   <div class="status-pill" id="statusPill">Connecting…</div>
+  <div class="coin-pill" id="coinPill">🪙 –</div>
+
+  <div class="topup" id="topup">
+    <div style="font-size:2.6rem">🪙</div>
+    <h2>Out of coins</h2>
+    <p>Top up to keep the call going. <small id="topupSub">The call will end soon if coins run out.</small></p>
+    <div class="opts">
+      <button class="opt" id="tuBuy">Buy coins</button>
+      <button class="opt ghost" id="tuAd">Watch an ad for free coins</button>
+      <button class="opt end" id="tuEnd">End call</button>
+    </div>
+  </div>
 
   <div class="overlay" id="overlay">
     <div class="av" id="ovAv">🙂</div>
@@ -102,6 +126,7 @@
       $("#remote").srcObject = e.streams[0];
       $("#overlay").classList.add("hidden");
       setStatus("Connected");
+      startBilling();
     };
     pc.onicecandidate = (e) => {
       if (!e.candidate) return;
@@ -159,6 +184,49 @@
   }
   function flushPending() { pending.forEach((c) => pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})); pending = []; }
 
+  /* Coins / billing — only the CALLER pays; the callee is free */
+  let billing = false, billTimer = null, graceTimer = null, coinsNow = 0, coinsWatching = false;
+  $("#tuBuy").textContent = `Buy ${COINS.buyCoins} coins ($${COINS.buyPriceUSD})`;
+
+  function watchCoins() {
+    coinsRef(myUid).on("value", (s) => {
+      coinsNow = s.val() || 0;
+      $("#coinPill").textContent = "🪙 " + coinsNow;
+      if (coinsNow > 0 && $("#topup").classList.contains("show")) {
+        hideTopup();          // topped up → resume
+        if (!billing) startBilling();
+      }
+    });
+  }
+
+  function startBilling() {
+    if (!isCaller || billing) return;
+    billing = true;
+    $("#coinPill").style.display = "block";
+    watchCoins();
+    chargeMinute();                                  // charge the first minute up front
+    billTimer = setInterval(chargeMinute, 60000);    // then one coin per minute
+  }
+
+  async function chargeMinute() {
+    if (coinsNow <= 0) { outOfCoins(); return; }
+    const left = await spendCoins(myUid, COINS.perMinute);
+    if (left <= 0) outOfCoins();
+  }
+
+  function outOfCoins() {
+    clearInterval(billTimer); billTimer = null;
+    $("#topup").classList.add("show");
+    // 45s to top up, otherwise the call ends
+    clearTimeout(graceTimer);
+    graceTimer = setTimeout(() => { if (coinsNow <= 0) { setStatus("Call ended — out of coins"); hangUp(); } }, 45000);
+  }
+  function hideTopup() { $("#topup").classList.remove("show"); clearTimeout(graceTimer); }
+
+  $("#tuBuy").onclick = () => requestCoins("buy");
+  $("#tuAd").onclick = () => requestCoins("ad");
+  $("#tuEnd").onclick = hangUp;
+
   /* Controls */
   let micOn = true, camOn = true;
   $("#micBtn").onclick = () => {
@@ -182,7 +250,7 @@
 
   function endLocal(delay = 0) {
     if (ended) return; ended = true;
-    clearTimeout(ringTimeout);
+    clearTimeout(ringTimeout); clearInterval(billTimer); clearTimeout(graceTimer);
     try { pc && pc.close(); } catch (e) {}
     try { localStream && localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
     setTimeout(leave, delay);
