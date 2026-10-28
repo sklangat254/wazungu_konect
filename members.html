@@ -108,18 +108,21 @@
 <!-- Invite "how to" sheet -->
 <div class="sheet-bg" id="inviteSheet">
   <div class="sheet">
-    <h3>Invite a friend to start chatting</h3>
-    <p class="muted small" style="margin-bottom:12px">Amoriva grows through friends. Share your invite code — once a friend joins with it, you're set.</p>
-    <ol style="padding-left:20px;margin-bottom:14px;font-size:.92rem;line-height:1.7">
-      <li>Copy your invite code below.</li>
-      <li>Share it with a friend on WhatsApp, SMS or anywhere.</li>
-      <li>Ask them to join Amoriva and enter your code.</li>
-    </ol>
-    <div class="field">
-      <label class="small muted">Your invite code</label>
-      <input class="input" id="myCode" readonly style="font-weight:800;letter-spacing:.5px">
+    <div class="invite-hero">
+      <div class="ih-ic">🎁</div>
+      <h3>Invite a friend</h3>
+      <p>Share your code — once a friend joins, you're set to chat freely.</p>
     </div>
-    <div class="stack" style="margin-top:4px">
+    <div class="inv-steps">
+      <div class="inv-step"><span class="sn">1</span> Copy your invite code</div>
+      <div class="inv-step"><span class="sn">2</span> Share it on WhatsApp, SMS or anywhere</div>
+      <div class="inv-step"><span class="sn">3</span> Your friend joins with your code</div>
+    </div>
+    <label class="inv-label">Your invite code</label>
+    <div class="code-display">
+      <input class="input" id="myCode" readonly>
+    </div>
+    <div class="stack">
       <button class="btn btn-primary" id="shareCode">📤 Share invite</button>
       <button class="btn btn-outline" id="copyCode">📋 Copy code</button>
       <button class="btn btn-outline" data-close>Close</button>

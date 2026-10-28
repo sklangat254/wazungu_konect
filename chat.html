@@ -54,26 +54,30 @@
 <!-- Invite sheet -->
 <div class="sheet-bg" id="inviteSheet">
   <div class="sheet">
-    <h3>Invite a friend to start chatting</h3>
-    <p class="muted small" style="margin-bottom:12px">Amoriva grows through friends. Invite someone, or enter a code a friend gave you, to unlock chatting.</p>
-    <ol style="padding-left:20px;margin-bottom:16px;font-size:.92rem;line-height:1.7">
-      <li>Copy your invite code below.</li>
-      <li>Share it with a friend on WhatsApp, SMS or anywhere.</li>
-      <li>Ask them to join Amoriva and use your code.</li>
-      <li>Were you invited? Paste your friend's code below to unlock.</li>
-    </ol>
-    <label class="small" style="font-weight:700">Your invite code</label>
-    <div style="display:flex;gap:8px;margin:6px 0 16px">
-      <input class="input" id="myCode" readonly style="flex:1;font-weight:700;letter-spacing:.5px">
-      <button class="btn btn-outline btn-sm" id="copyCode">Copy</button>
-      <button class="btn btn-outline btn-sm" id="shareCode">Share</button>
+    <div class="invite-hero">
+      <div class="ih-ic">🎁</div>
+      <h3>Invite a friend</h3>
+      <p>Invite one friend to keep chatting — it's how Amoriva grows.</p>
     </div>
-    <label class="small" style="font-weight:700">Have an invite code?</label>
-    <div class="field" style="margin-top:6px">
-      <input class="input" id="inviteInput" placeholder="Paste the code here">
+    <div class="inv-steps">
+      <div class="inv-step"><span class="sn">1</span> Copy your invite code</div>
+      <div class="inv-step"><span class="sn">2</span> Share it on WhatsApp, SMS or anywhere</div>
+      <div class="inv-step"><span class="sn">3</span> Your friend joins with your code</div>
+    </div>
+    <label class="inv-label">Your invite code</label>
+    <div class="code-display">
+      <input class="input" id="myCode" readonly>
+    </div>
+    <div class="stack" style="margin-bottom:18px">
+      <button class="btn btn-primary" id="shareCode">📤 Share invite</button>
+      <button class="btn btn-outline" id="copyCode">📋 Copy code</button>
+    </div>
+    <label class="inv-label">Were you invited? Paste the code here</label>
+    <div class="field" style="margin-top:0">
+      <textarea class="input code-paste" id="inviteInput" placeholder="Paste your friend's Amoriva code here…"></textarea>
     </div>
     <div class="stack">
-      <button class="btn btn-primary" id="unlockBtn">Unlock chat</button>
+      <button class="btn btn-primary" id="unlockBtn">✅ Unlock chat</button>
       <button class="btn btn-outline" data-close>Close</button>
     </div>
   </div>
@@ -121,9 +125,27 @@
   const otherUid = params.get("u");
   const pseudoSeed = params.get("pseudo");
   const pseudoMode = pseudoSeed !== null;
-  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, unlocked = false, gated = false, lastDay = "", lastSend = 0, msgCount = 0;
+  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, invited = false, freeUsed = false, lastDay = "", lastSend = 0, msgCount = 0;
   let pseudoSend = () => {};
   function requestUnlock() { open("inviteSheet"); }
+
+  // A user gets ONE free message (in any chat, real or demo). The next message asks them to
+  // invite a friend first — a light nudge that grows the community without demanding much upfront.
+  function canSend() {
+    if (invited) return true;
+    if (!freeUsed) return true;
+    requestUnlock();
+    return false;
+  }
+  function consumeFree() {
+    if (invited || freeUsed) return;
+    freeUsed = true;
+    try { ref("users/" + myUid + "/freeMsgUsed").set(true); } catch (e) {}
+  }
+  function markInvited() {
+    invited = true;
+    try { ref("users/" + myUid + "/hasInvited").set(true); } catch (e) {}
+  }
 
   if (pseudoMode) { initPseudoChat(); }
   else requireAuth().then(async ({ user, profile }) => {
@@ -131,7 +153,8 @@
     if (!otherUid || otherUid === myUid) { location.replace("members.html"); return; }
     cid = chatIdFor(myUid, otherUid);
 
-    unlocked = me && me.chatUnlocked === true;
+    invited = !!(me && (me.chatUnlocked === true || me.hasInvited === true));
+    freeUsed = !!(me && me.freeMsgUsed === true);
     $("#myCode").value = "Amoriva" + myUid.slice(0, 6).toUpperCase();
     refreshComposer();
 
@@ -200,13 +223,14 @@
   }
 
   async function send() {
-    if (gated) { requestUnlock(); return; }
     const text = $("#text").value.trim();
     if (!text || iBlocked || theyBlocked) return;
+    if (!canSend()) return;
     if (Date.now() - lastSend < 700) return; // simple flood guard
     lastSend = Date.now();
     $("#text").value = ""; autoGrow();
     setTyping(false);
+    consumeFree();
 
     const key = ref("messages/" + cid).push().key;
     const preview = text.length > 80 ? text.slice(0, 80) + "…" : text;
@@ -238,19 +262,14 @@
   function onType() {
     autoGrow();
     if (pseudoMode) return;
-    if (unlocked && !iBlocked && !theyBlocked) setTyping($("#text").value.trim().length > 0);
+    if (!iBlocked && !theyBlocked) setTyping($("#text").value.trim().length > 0);
   }
-  // When chatting is still locked, the box is read-only: any attempt to write (tap, focus or
-  // keypress) or to send opens the invite sheet, so the one requirement is clear.
-  $("#text").addEventListener("pointerdown", (e) => { if (gated) { e.preventDefault(); $("#text").blur(); requestUnlock(); } });
-  $("#text").addEventListener("focus", () => { if (gated) { $("#text").blur(); requestUnlock(); } });
   $("#text").addEventListener("keydown", (e) => {
-    if (gated) { e.preventDefault(); requestUnlock(); return; }
     if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); pseudoMode ? pseudoSend() : send(); }
   });
   $("#text").addEventListener("input", onType);
   $("#text").addEventListener("blur", () => { if (!pseudoMode) setTyping(false); });
-  $("#sendBtn").onclick = () => { if (pseudoMode) { pseudoSend(); return; } if (gated) { requestUnlock(); return; } send(); };
+  $("#sendBtn").onclick = () => { pseudoMode ? pseudoSend() : send(); };
   window.addEventListener("pagehide", () => { if (!pseudoMode) setTyping(false); });
 
   function setComposer(enabled, note) {
@@ -261,15 +280,12 @@
   }
   function refreshComposer() {
     const blocked = iBlocked || theyBlocked;
-    gated = !unlocked && !blocked;
-    // The composer stays visible whenever the member isn't blocked — even when locked —
-    // so the only requirement to chat (inviting a friend) is obvious from the message box itself.
+    // Composer is always usable unless the member is blocked. The one-free-message rule in
+    // canSend() handles the invite nudge, so there's no read-only lock on the box any more.
     $("#composer").classList.toggle("hidden", blocked);
     $("#lockBar").classList.add("hidden");
-    const t = $("#text");
-    t.readOnly = gated;
-    t.placeholder = gated ? "Invite a friend to start chatting…" : "Type a message…";
-    $("#lockHint").classList.toggle("hidden", !gated);
+    const t = $("#text"); t.readOnly = false; t.placeholder = "Type a message…";
+    $("#lockHint").classList.add("hidden");
     const blockNote = iBlocked ? "You blocked this member. Unblock from the ⋯ menu to chat again."
       : theyBlocked ? "You can't message this member." : "";
     $("#blockedNote").classList.toggle("hidden", blockNote === "");
@@ -319,21 +335,22 @@
   $("#lockBtn").onclick = () => open("inviteSheet");
   $("#copyCode").onclick = () => {
     navigator.clipboard?.writeText($("#myCode").value);
-    toast("Code copied");
+    toast("Code copied — share it with a friend!");
+    markInvited(); closeAll();
   };
   $("#shareCode").onclick = () => {
     const data = { title: "Amoriva", text: `Join me on Amoriva! Use my invite code: ${$("#myCode").value}`, url: location.origin + "/index.html" };
-    if (navigator.share) navigator.share(data).catch(() => {});
-    else { navigator.clipboard?.writeText(data.text + " " + data.url); toast("Invite copied"); }
+    if (navigator.share) navigator.share(data).then(() => { markInvited(); closeAll(); }).catch(() => {});
+    else { navigator.clipboard?.writeText(data.text + " " + data.url); toast("Invite copied"); markInvited(); closeAll(); }
   };
   $("#unlockBtn").onclick = async () => {
     const v = ($("#inviteInput").value || "").trim();
     if (!/amoriva/i.test(v)) { toast("That code isn't valid.", true); return; }
     try { await ref("users/" + myUid + "/chatUnlocked").set(true); } catch (e) {}
-    unlocked = true;
+    invited = true;
     closeAll();
     refreshComposer();
-    toast("Unlocked — you can chat now!");
+    toast("Unlocked — chat as much as you like!");
   };
 
   $("#blockBtn").onclick = async () => {
@@ -389,8 +406,8 @@
         <p class="bio">This is a demo profile that shows how a real chat looks. Invite a friend to chat with real members.</p>
       </div></div>`;
 
-    // Composer is always open in demo mode (no invite gate).
-    gated = false; unlocked = true;
+    // Composer open in demo mode. The one-free-message rule still applies, so the user is
+    // invited to bring a friend after their first reply here too.
     $("#composer").classList.remove("hidden");
     const t = $("#text"); t.readOnly = false; t.placeholder = "Type a message…";
     $("#lockHint").classList.add("hidden");
@@ -411,21 +428,28 @@
     function botSay() {
       if (li >= lines.length || awaiting) return;
       awaiting = true;
+      const line = lines[li];
       const h = $("#headStatus");
-      h.className = "status-text typing";
-      h.innerHTML = `typing <span class="typing-dots"><span></span><span></span><span></span></span>`;
+      // Show "typing…" for a few seconds (longer for longer messages) so replies feel real.
+      const delay = Math.min(4500, 1600 + line.length * 35);
+      setTimeout(() => {
+        h.className = "status-text typing";
+        h.innerHTML = `typing <span class="typing-dots"><span></span><span></span><span></span></span>`;
+      }, 350);
       setTimeout(() => {
         addPseudoMsg(lines[li++], false);
         headOnline();
         awaiting = false;
-      }, 1100);
+      }, delay);
     }
 
     pseudoSend = () => {
       const text = $("#text").value.trim();
       if (!text || awaiting) return;      // you must reply before the next demo message
+      if (!canSend()) return;             // one free message, then invite a friend
       $("#text").value = ""; autoGrow();
       addPseudoMsg(text, true);
+      consumeFree();
       botSay();                           // the demo member replies to what you said
     };
 
