@@ -30,6 +30,37 @@
     <button class="btn btn-primary" id="sendBtn">Send</button>
   </div>
   <div class="notice hidden" id="blockedNote" style="margin:10px 12px"></div>
+  <div class="composer hidden" id="lockBar">
+    <button class="btn btn-primary" id="lockBtn">🔒 Invite a friend to unlock chatting</button>
+  </div>
+</div>
+
+<!-- Invite sheet -->
+<div class="sheet-bg" id="inviteSheet">
+  <div class="sheet">
+    <h3>Invite a friend to start chatting</h3>
+    <p class="muted small" style="margin-bottom:12px">Amoriva grows through friends. Invite someone, or enter a code a friend gave you, to unlock chatting.</p>
+    <ol style="padding-left:20px;margin-bottom:16px;font-size:.92rem;line-height:1.7">
+      <li>Copy your invite code below.</li>
+      <li>Share it with a friend on WhatsApp, SMS or anywhere.</li>
+      <li>Ask them to join Amoriva and use your code.</li>
+      <li>Were you invited? Paste your friend's code below to unlock.</li>
+    </ol>
+    <label class="small" style="font-weight:700">Your invite code</label>
+    <div style="display:flex;gap:8px;margin:6px 0 16px">
+      <input class="input" id="myCode" readonly style="flex:1;font-weight:700;letter-spacing:.5px">
+      <button class="btn btn-outline btn-sm" id="copyCode">Copy</button>
+      <button class="btn btn-outline btn-sm" id="shareCode">Share</button>
+    </div>
+    <label class="small" style="font-weight:700">Have an invite code?</label>
+    <div class="field" style="margin-top:6px">
+      <input class="input" id="inviteInput" placeholder="Paste the code here">
+    </div>
+    <div class="stack">
+      <button class="btn btn-primary" id="unlockBtn">Unlock chat</button>
+      <button class="btn btn-outline" data-close>Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- Menu sheet -->
@@ -71,12 +102,17 @@
 <script src="common.js"></script>
 <script>
   const otherUid = new URLSearchParams(location.search).get("u");
-  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, lastDay = "", lastSend = 0, msgCount = 0;
+  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, unlocked = false, lastDay = "", lastSend = 0, msgCount = 0;
 
   requireAuth().then(async ({ user, profile }) => {
     myUid = user.uid; me = profile;
     if (!otherUid || otherUid === myUid) { location.replace("members.html"); return; }
     cid = chatIdFor(myUid, otherUid);
+
+    unlocked = me && me.chatUnlocked === true;
+    $("#myCode").value = "Amoriva" + myUid.slice(0, 6).toUpperCase();
+    refreshComposer();
+    if (!unlocked) open("inviteSheet");
 
     const snap = await ref("users/" + otherUid).once("value");
     other = snap.val();
@@ -163,14 +199,22 @@
 
   function setComposer(enabled, note) {
     $("#composer").classList.toggle("hidden", !enabled);
+    $("#lockBar").classList.add("hidden");
     $("#blockedNote").classList.toggle("hidden", enabled);
     if (note) $("#blockedNote").textContent = note;
   }
+  function refreshComposer() {
+    const showComposer = unlocked && !iBlocked && !theyBlocked;
+    $("#composer").classList.toggle("hidden", !showComposer);
+    $("#lockBar").classList.toggle("hidden", unlocked || iBlocked || theyBlocked);
+    const blockNote = iBlocked ? "You blocked this member. Unblock from the ⋯ menu to chat again."
+      : theyBlocked ? "You can't message this member." : "";
+    $("#blockedNote").classList.toggle("hidden", blockNote === "");
+    if (blockNote) $("#blockedNote").textContent = blockNote;
+  }
   function updateBlockUI() {
     $("#blockBtn").textContent = iBlocked ? "✅ Unblock" : "🚫 Block";
-    if (iBlocked) setComposer(false, "You blocked this member. Unblock from the ⋯ menu to chat again.");
-    else if (theyBlocked) setComposer(false, "You can't message this member.");
-    else setComposer(true);
+    refreshComposer();
   }
 
   function renderProfileView() {
@@ -204,6 +248,27 @@
   };
   $$("[data-close]").forEach((b) => b.onclick = closeAll);
   $$(".sheet-bg").forEach((bg) => bg.onclick = (e) => { if (e.target === bg) closeAll(); });
+
+  // Invite / unlock
+  $("#lockBtn").onclick = () => open("inviteSheet");
+  $("#copyCode").onclick = () => {
+    navigator.clipboard?.writeText($("#myCode").value);
+    toast("Code copied");
+  };
+  $("#shareCode").onclick = () => {
+    const data = { title: "Amoriva", text: `Join me on Amoriva! Use my invite code: ${$("#myCode").value}`, url: location.origin + "/index.html" };
+    if (navigator.share) navigator.share(data).catch(() => {});
+    else { navigator.clipboard?.writeText(data.text + " " + data.url); toast("Invite copied"); }
+  };
+  $("#unlockBtn").onclick = async () => {
+    const v = ($("#inviteInput").value || "").trim();
+    if (!/amoriva/i.test(v)) { toast("That code isn't valid.", true); return; }
+    try { await ref("users/" + myUid + "/chatUnlocked").set(true); } catch (e) {}
+    unlocked = true;
+    closeAll();
+    refreshComposer();
+    toast("Unlocked — you can chat now!");
+  };
 
   $("#blockBtn").onclick = async () => {
     const r = ref(`blocks/${myUid}/${otherUid}`);
