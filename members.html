@@ -57,14 +57,31 @@
   const isOnline = (uid) => statuses[uid] && statuses[uid].state === "online";
   const overlap = (a = [], b = []) => a.filter((x) => b.includes(x));
 
-  // Clearly-labelled example members, shown only when there are no real members to list yet,
-  // so a new user sees exactly how a real card will look. Some are "Online", some "typing".
-  const PSEUDO_MEMBERS = [
-    { name: "Amara", country: "NG", speaks: ["English"], learning: ["Swahili"], interests: ["Music", "Cooking"], bio: "Happy to help with English — teach me some Swahili!", mode: "online" },
-    { name: "Lukas", country: "DE", speaks: ["German"], learning: ["English"], interests: ["Travel", "Football"], bio: "Learning English, love talking about football and travel.", mode: "typing" },
-    { name: "Mei", country: "CN", speaks: ["Chinese"], learning: ["English"], interests: ["Movies", "Art"], bio: "Let's practise together and swap stories about our cultures.", mode: "online" },
-    { name: "Sofia", country: "BR", speaks: ["Portuguese"], learning: ["Spanish"], interests: ["Dance", "Food"], bio: "Brazilian, learning Spanish. Tell me about your country's food!", mode: "typing" }
-  ];
+  // Clearly-labelled example members used to top the dashboard up to ~50 when there aren't yet
+  // 50 real members, so a new user sees what a full community looks like. Each is tagged PSEUDO.
+  // Some are "Online", some are "typing". The pool is built once so it stays stable across renders.
+  const PSEUDO_FIRST = ["Amara","Lukas","Mei","Sofia","Diego","Aisha","Yuki","Noah","Priya","Omar","Lena","Tariq","Chloe","Ravi","Nadia","Ivan","Fatima","Kento","Elena","Mateo","Zara","Hassan","Lin","Bruno","Ingrid","Kwame","Sara","Jin","Marta","Youssef","Ana","Dmitri","Leila","Pablo","Hana","Samuel","Clara","Arjun","Nora","Felix","Maya","Tomas","Rania","Kofi","Isla","Viktor","Amina","Luca","Thandi","Jonas"];
+  const PSEUDO_LOC = [["NG","English"],["DE","German"],["CN","Chinese"],["BR","Portuguese"],["MX","Spanish"],["EG","Arabic"],["JP","Japanese"],["US","English"],["IN","Hindi"],["SA","Arabic"],["SE","Swedish"],["FR","French"],["IT","Italian"],["RU","Russian"],["KE","Swahili"],["ZA","English"],["KR","Korean"],["TR","Turkish"],["ES","Spanish"],["PT","Portuguese"]];
+  const PSEUDO_LEARN = ["English","Spanish","French","Swahili","Arabic","Japanese","German","Chinese","Portuguese","Italian"];
+  const PSEUDO_INT = ["Music","Cooking","Travel","Football","Movies","Art","Dance","Food","Books","Photography","Hiking","Gaming"];
+  const PSEUDO_BIO = ["Happy to help with my language — let's practise together!","Love swapping stories about food, music and culture.","Learning every day — tell me about your country!","Looking for a friendly language partner worldwide.","Keen to make friends and exchange languages."];
+  function buildPseudoPool(n) {
+    const pool = [];
+    for (let k = 0; k < n; k++) {
+      const loc = PSEUDO_LOC[k % PSEUDO_LOC.length], speak = loc[1];
+      let learn = PSEUDO_LEARN[k % PSEUDO_LEARN.length];
+      if (learn === speak) learn = PSEUDO_LEARN[(k + 1) % PSEUDO_LEARN.length];
+      pool.push({
+        name: PSEUDO_FIRST[k % PSEUDO_FIRST.length],
+        country: loc[0], speaks: [speak], learning: [learn],
+        interests: [PSEUDO_INT[k % PSEUDO_INT.length], PSEUDO_INT[(k + 5) % PSEUDO_INT.length]],
+        bio: PSEUDO_BIO[k % PSEUDO_BIO.length],
+        mode: (k % 3 === 1) ? "typing" : "online"
+      });
+    }
+    return pool;
+  }
+  const PSEUDO_POOL = buildPseudoPool(50);
   function pseudoMemberCard(u) {
     const statusHTML = u.mode === "typing"
       ? `<span class="status-text typing">${esc(countryName(u.country))} · typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
@@ -112,44 +129,61 @@
     rows.sort((a, b) => (b.online - a.online) || (b.score - a.score) || ((b.u.lastSeen || 0) - (a.u.lastSeen || 0)));
 
     const list = $("#list");
-    if (!rows.length) {
-      list.innerHTML = `<div class="card empty" style="padding:20px 18px">
+    const realHTML = rows.map(realMemberCardHTML).join("");
+
+    // Default view (no filter, no search): top up to 50 with clearly-labelled example members
+    // so a new user sees a full-looking community. Real members always come first.
+    if (filter === "all" && !q) {
+      const need = Math.max(0, 50 - rows.length);
+      const pseudoHTML = PSEUDO_POOL.slice(0, need).map(pseudoMemberCard).join("");
+      const intro = rows.length ? "" : `<div class="card empty" style="padding:20px 18px">
           <div class="big">🌱</div>
-          <h2>${filter === "online" ? "Nobody else is online right now" : "No members yet"}</h2>
+          <h2>Be the first real member</h2>
           <p class="muted small" style="margin:8px 0 16px">Amoriva grows as people join. The cards below are <b>examples</b> that show how real members will appear here. Invite a friend to get the community started.</p>
           <button class="btn btn-primary btn-sm" id="inviteBtn">📤 Invite friends</button>
-        </div>`
-        + PSEUDO_MEMBERS.map(pseudoMemberCard).join("");
-      $("#inviteBtn").onclick = invite;
+        </div>`;
+      list.innerHTML = intro + realHTML + pseudoHTML;
+      const ib = $("#inviteBtn"); if (ib) ib.onclick = invite;
       $$("#list .pseudo-msg").forEach((b) => b.onclick = () =>
         toast("Example profile — real members appear here as people join. Invite a friend to grow Amoriva."));
       return;
     }
 
-    list.innerHTML = rows.map((r, idx) => {
-      const { uid, u, online } = r;
-      const st = statusLabel(statuses[uid]);
-      const typing = statuses[uid] && statuses[uid].typing === true;
-      const statusHTML = typing
-        ? `<span class="status-text typing">${esc(countryName(u.country))}${countryName(u.country) ? " · " : ""}typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
-        : `<span class="status-text ${st.online ? "online" : ""}">${countryName(u.country) ? esc(countryName(u.country)) + " · " : ""}${st.text}</span>`;
-      const matchLine = r.canTeach.length
-        ? `<span class="pill" style="margin-top:6px">✨ Speaks ${esc(r.canTeach.join(", "))}</span>`
-        : r.canHelp.length ? `<span class="pill" style="margin-top:6px">🤝 Learning ${esc(r.canHelp.join(", "))}</span>` : "";
-      return `<div class="card member">
-        ${avatarHTML(u, uid, online)}
-        <div class="info">
-          <div class="name"><a href="profile.html?u=${encodeURIComponent(uid)}" style="color:inherit">${esc(u.name)}</a> ${flag(u.country)}</div>
-          ${statusHTML}
-          ${matchLine}
-          ${u.bio ? `<p class="bio">${esc(u.bio)}</p>` : ""}
-          <div class="lang-row"><b>Speaks:</b> ${esc((u.speaks || []).join(", "))}</div>
-          <div class="lang-row"><b>Learning:</b> ${esc((u.learning || []).join(", "))}</div>
-          ${(u.interests || []).length ? `<div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>` : ""}
-          <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
-        </div>
-      </div>`;
-    }).join("");
+    // Filtered / search views: real results only (no examples mixed in).
+    if (!rows.length) {
+      list.innerHTML = `<div class="card empty" style="padding:20px 18px">
+          <div class="big">🔎</div>
+          <h2>${filter === "online" ? "Nobody matching is online right now" : "No members match yet"}</h2>
+          <p class="muted small" style="margin:8px 0 2px">Try a different filter or search, or invite a friend to join.</p>
+        </div>`;
+      return;
+    }
+    list.innerHTML = realHTML;
+  }
+
+  function realMemberCardHTML(r) {
+    const { uid, u, online } = r;
+    const st = statusLabel(statuses[uid]);
+    const typing = statuses[uid] && statuses[uid].typing === true;
+    const statusHTML = typing
+      ? `<span class="status-text typing">${esc(countryName(u.country))}${countryName(u.country) ? " · " : ""}typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
+      : `<span class="status-text ${st.online ? "online" : ""}">${countryName(u.country) ? esc(countryName(u.country)) + " · " : ""}${st.text}</span>`;
+    const matchLine = r.canTeach.length
+      ? `<span class="pill" style="margin-top:6px">✨ Speaks ${esc(r.canTeach.join(", "))}</span>`
+      : r.canHelp.length ? `<span class="pill" style="margin-top:6px">🤝 Learning ${esc(r.canHelp.join(", "))}</span>` : "";
+    return `<div class="card member">
+      ${avatarHTML(u, uid, online)}
+      <div class="info">
+        <div class="name"><a href="profile.html?u=${encodeURIComponent(uid)}" style="color:inherit">${esc(u.name)}</a> ${flag(u.country)}</div>
+        ${statusHTML}
+        ${matchLine}
+        ${u.bio ? `<p class="bio">${esc(u.bio)}</p>` : ""}
+        <div class="lang-row"><b>Speaks:</b> ${esc((u.speaks || []).join(", "))}</div>
+        <div class="lang-row"><b>Learning:</b> ${esc((u.learning || []).join(", "))}</div>
+        ${(u.interests || []).length ? `<div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>` : ""}
+        <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
+      </div>
+    </div>`;
   }
 
   function invite() {
