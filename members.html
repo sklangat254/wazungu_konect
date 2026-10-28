@@ -57,6 +57,36 @@
   const isOnline = (uid) => statuses[uid] && statuses[uid].state === "online";
   const overlap = (a = [], b = []) => a.filter((x) => b.includes(x));
 
+  // Clearly-labelled example members, shown only when there are no real members to list yet,
+  // so a new user sees exactly how a real card will look. Some are "Online", some "typing".
+  const PSEUDO_MEMBERS = [
+    { name: "Amara", country: "NG", speaks: ["English"], learning: ["Swahili"], interests: ["Music", "Cooking"], bio: "Happy to help with English — teach me some Swahili!", mode: "online" },
+    { name: "Lukas", country: "DE", speaks: ["German"], learning: ["English"], interests: ["Travel", "Football"], bio: "Learning English, love talking about football and travel.", mode: "typing" },
+    { name: "Mei", country: "CN", speaks: ["Chinese"], learning: ["English"], interests: ["Movies", "Art"], bio: "Let's practise together and swap stories about our cultures.", mode: "online" },
+    { name: "Sofia", country: "BR", speaks: ["Portuguese"], learning: ["Spanish"], interests: ["Dance", "Food"], bio: "Brazilian, learning Spanish. Tell me about your country's food!", mode: "typing" }
+  ];
+  function pseudoMemberCard(u) {
+    const statusHTML = u.mode === "typing"
+      ? `<span class="status-text typing">${esc(countryName(u.country))} · typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
+      : `<span class="status-text online">${esc(countryName(u.country))} · Online now</span>`;
+    return `<div class="card member">
+      ${avatarHTML(u, u.name, true)}
+      <div class="info">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="name">${esc(u.name)} ${flag(u.country)}</div>
+          <span class="tag" style="background:#fde68a;color:#92400e;font-weight:800">PSEUDO</span>
+        </div>
+        ${statusHTML}
+        <p class="bio">${esc(u.bio)}</p>
+        <div class="lang-row"><b>Speaks:</b> ${esc(u.speaks.join(", "))}</div>
+        <div class="lang-row"><b>Learning:</b> ${esc(u.learning.join(", "))}</div>
+        <div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>
+        <div class="tag" style="margin-top:8px;background:var(--surface-2);color:var(--muted)">Example profile · not a real member</div>
+        <div class="actions"><button class="btn btn-primary btn-sm pseudo-msg" style="display:block;width:100%;text-align:center">💬 Message</button></div>
+      </div>
+    </div>`;
+  }
+
   function render() {
     if (!me) return;
     const q = $("#search").value.trim().toLowerCase();
@@ -83,13 +113,16 @@
 
     const list = $("#list");
     if (!rows.length) {
-      list.innerHTML = `<div class="card empty">
-        <div class="big">🌱</div>
-        <h2>${filter === "online" ? "Nobody else is online right now" : "No members match yet"}</h2>
-        <p class="muted small" style="margin:8px 0 16px">Amoriva grows as people join. Invite a friend who's learning a language.</p>
-        <button class="btn btn-primary btn-sm" id="inviteBtn">📤 Invite friends</button>
-      </div>`;
+      list.innerHTML = `<div class="card empty" style="padding:20px 18px">
+          <div class="big">🌱</div>
+          <h2>${filter === "online" ? "Nobody else is online right now" : "No members yet"}</h2>
+          <p class="muted small" style="margin:8px 0 16px">Amoriva grows as people join. The cards below are <b>examples</b> that show how real members will appear here. Invite a friend to get the community started.</p>
+          <button class="btn btn-primary btn-sm" id="inviteBtn">📤 Invite friends</button>
+        </div>`
+        + PSEUDO_MEMBERS.map(pseudoMemberCard).join("");
       $("#inviteBtn").onclick = invite;
+      $$("#list .pseudo-msg").forEach((b) => b.onclick = () =>
+        toast("Example profile — real members appear here as people join. Invite a friend to grow Amoriva."));
       return;
     }
 
@@ -113,7 +146,7 @@
           <div class="lang-row"><b>Speaks:</b> ${esc((u.speaks || []).join(", "))}</div>
           <div class="lang-row"><b>Learning:</b> ${esc((u.learning || []).join(", "))}</div>
           ${(u.interests || []).length ? `<div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>` : ""}
-          <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
+          <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
         </div>
       </div>`;
     }).join("");

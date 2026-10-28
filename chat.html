@@ -36,6 +36,7 @@
   </div>
 
   <div class="starter hidden" id="starters"></div>
+  <div class="small muted center hidden" id="lockHint" style="margin:0 12px 6px">🎁 Invite a friend to unlock chatting — tap the box to get your code.</div>
   <div class="composer" id="composer">
     <textarea class="input" id="text" rows="1" maxlength="1000" placeholder="Type a message…"></textarea>
     <button class="btn btn-primary" id="sendBtn">Send</button>
@@ -117,7 +118,8 @@
 <script src="common.js"></script>
 <script>
   const otherUid = new URLSearchParams(location.search).get("u");
-  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, unlocked = false, lastDay = "", lastSend = 0, msgCount = 0;
+  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, unlocked = false, gated = false, lastDay = "", lastSend = 0, msgCount = 0;
+  function requestUnlock() { open("inviteSheet"); }
 
   requireAuth().then(async ({ user, profile }) => {
     myUid = user.uid; me = profile;
@@ -127,7 +129,6 @@
     unlocked = me && me.chatUnlocked === true;
     $("#myCode").value = "Amoriva" + myUid.slice(0, 6).toUpperCase();
     refreshComposer();
-    if (!unlocked) open("inviteSheet");
 
     const snap = await ref("users/" + otherUid).once("value");
     other = snap.val();
@@ -194,6 +195,7 @@
   }
 
   async function send() {
+    if (gated) { requestUnlock(); return; }
     const text = $("#text").value.trim();
     if (!text || iBlocked || theyBlocked) return;
     if (Date.now() - lastSend < 700) return; // simple flood guard
@@ -232,10 +234,17 @@
     autoGrow();
     if (unlocked && !iBlocked && !theyBlocked) setTyping($("#text").value.trim().length > 0);
   }
+  // When chatting is still locked, the box is read-only: any attempt to write (tap, focus or
+  // keypress) or to send opens the invite sheet, so the one requirement is clear.
+  $("#text").addEventListener("pointerdown", (e) => { if (gated) { e.preventDefault(); $("#text").blur(); requestUnlock(); } });
+  $("#text").addEventListener("focus", () => { if (gated) { $("#text").blur(); requestUnlock(); } });
+  $("#text").addEventListener("keydown", (e) => {
+    if (gated) { e.preventDefault(); requestUnlock(); return; }
+    if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); send(); }
+  });
   $("#text").addEventListener("input", onType);
   $("#text").addEventListener("blur", () => setTyping(false));
-  $("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); send(); } });
-  $("#sendBtn").onclick = send;
+  $("#sendBtn").onclick = () => { if (gated) { requestUnlock(); return; } send(); };
   window.addEventListener("pagehide", () => setTyping(false));
 
   function setComposer(enabled, note) {
@@ -245,9 +254,16 @@
     if (note) $("#blockedNote").textContent = note;
   }
   function refreshComposer() {
-    const showComposer = unlocked && !iBlocked && !theyBlocked;
-    $("#composer").classList.toggle("hidden", !showComposer);
-    $("#lockBar").classList.toggle("hidden", unlocked || iBlocked || theyBlocked);
+    const blocked = iBlocked || theyBlocked;
+    gated = !unlocked && !blocked;
+    // The composer stays visible whenever the member isn't blocked — even when locked —
+    // so the only requirement to chat (inviting a friend) is obvious from the message box itself.
+    $("#composer").classList.toggle("hidden", blocked);
+    $("#lockBar").classList.add("hidden");
+    const t = $("#text");
+    t.readOnly = gated;
+    t.placeholder = gated ? "Invite a friend to start chatting…" : "Type a message…";
+    $("#lockHint").classList.toggle("hidden", !gated);
     const blockNote = iBlocked ? "You blocked this member. Unblock from the ⋯ menu to chat again."
       : theyBlocked ? "You can't message this member." : "";
     $("#blockedNote").classList.toggle("hidden", blockNote === "");
