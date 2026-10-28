@@ -415,8 +415,12 @@
     const headOnline = () => { const h = $("#headStatus"); h.className = "status-text online"; h.textContent = "Online · demo account"; };
     headOnline();
 
-    // Demo chats aren't real people, so the call/block/report actions don't apply.
-    $("#callBtn").style.display = "none";
+    // Video call is enabled on demo accounts. If the user has already invited a friend, the
+    // demo member is shown as busy; otherwise the call nudges them to invite first.
+    $("#callBtn").onclick = () => {
+      if (invited) { toast(name + " is currently on another call. Please try again later."); }
+      else { requestUnlock(); }
+    };
     $("#blockBtn").style.display = "none";
     $("#reportOpen").style.display = "none";
     $("#profileView").innerHTML = `<div class="member" style="margin-bottom:6px">

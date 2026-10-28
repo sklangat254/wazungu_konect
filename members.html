@@ -253,7 +253,7 @@
   const PHOTO_GENDER = ["m","m","m","m","m","m","f","m","m","m","m","m","f","f","f","f","m","f","m","f","f","f","f","f","f","m","m","f","f","f","m","m","f","f","f","f","f","f","f","m","m","m","m","m","m","f","f","m","f","f","f","m","m","m","m","m"];
   const FEMALE_NAMES = ["Amara","Mei","Sofia","Aisha","Yuki","Priya","Lena","Chloe","Nadia","Fatima","Elena","Zara","Lin","Ingrid","Sara","Marta","Ana","Leila","Hana","Clara","Nora","Maya","Rania","Isla","Amina","Thandi","Dalia","Noura","Elif"];
   const MALE_NAMES = ["Lukas","Diego","Noah","Omar","Tariq","Ravi","Ivan","Kento","Mateo","Hassan","Bruno","Kwame","Jin","Youssef","Dmitri","Pablo","Samuel","Arjun","Felix","Tomas","Kofi","Viktor","Luca","Jonas","Andre","Marco","Sergio","Hiro","Daniel"];
-  const PSEUDO_LOC = [["NG","English"],["DE","German"],["CN","Chinese"],["BR","Portuguese"],["MX","Spanish"],["EG","Arabic"],["JP","Japanese"],["US","English"],["IN","Hindi"],["SA","Arabic"],["SE","Swedish"],["FR","French"],["IT","Italian"],["RU","Russian"],["KE","Swahili"],["ZA","English"],["KR","Korean"],["TR","Turkish"],["ES","Spanish"],["PT","Portuguese"]];
+  const PSEUDO_LOC = [["US","English"],["GB","English"],["CA","English"],["DE","German"],["FR","French"],["IN","Hindi"],["KR","Korean"],["AE","Arabic"],["IT","Italian"],["ES","Spanish"],["AU","English"],["NL","Dutch"],["SE","Swedish"],["JP","Japanese"],["CH","German"],["IE","English"],["NO","Norwegian"],["AT","German"],["BE","French"],["CN","Chinese"],["PL","Polish"],["PT","Portuguese"],["RU","Russian"],["NZ","English"],["FI","Finnish"],["DK","Danish"]];
   const PSEUDO_LEARN = ["English","Spanish","French","Swahili","Arabic","Japanese","German","Chinese","Portuguese","Italian"];
   const PSEUDO_INT = ["Music","Cooking","Travel","Football","Movies","Art","Dance","Food","Books","Photography","Hiking","Gaming"];
   const PSEUDO_BIO = ["Happy to help with my language... let's practise together!","Love swapping stories about food, music and culture.","Learning every day... tell me about your country!","Looking for a friendly language partner worldwide.","Keen to make friends and exchange languages."];
@@ -326,6 +326,10 @@
       ...(u.learning || []), ...(u.interests || [])].join(" ").toLowerCase().includes(q));
 
     rows.sort((a, b) => (b.online - a.online) || (b.score - a.score) || ((b.u.lastSeen || 0) - (a.u.lastSeen || 0)));
+
+    // Test mode: show at most 10 real members. Everyone else can still sign up and their data is
+    // saved in Firebase — they just aren't listed yet. Remove this cap to go fully live.
+    rows = rows.slice(0, 10);
 
     const list = $("#list");
     const realHTML = rows.map(realMemberCardHTML).join("");
