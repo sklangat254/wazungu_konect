@@ -67,18 +67,31 @@ async function spendCoins(uid, n = 1) {
 }
 // Ask YOUR backend to credit coins. kind = "buy" (PayHero STK) or "ad" (AdMob reward).
 // The backend must verify first, then credit with the Admin SDK — never trust the client.
+// True when running inside the Amoriva Android app (WebViewExtras injects B4A)
+function inAndroidApp() { return typeof B4A !== "undefined" && B4A && typeof B4A.CallSub === "function"; }
+
 async function requestCoins(kind) {
   if (kind === "ad") {
-    // Rewarded ads only work inside the Amoriva Android app (AdMob). The app injects
-    // a bridge; on the plain website we can't show a rewarded ad honestly.
-    if (window.AmorivaAds && typeof window.AmorivaAds.showRewarded === "function") {
-      window.AmorivaAds.showRewarded(); // app shows ad; AdMob SSV tells backend to credit
+    // Inside the Android app → native AdMob rewarded ad (backend credits via SSV).
+    if (inAndroidApp()) {
+      const token = await auth.currentUser.getIdToken();
+      B4A.CallSub("Main.WatchAd", false, token);
       toast("Loading ad…");
       return true;
     }
     toast("Rewarded ads are available in the Amoriva Android app.", true);
     return false;
   }
+
+  // BUY: inside the Android app → Google Play Billing (Play policy). The app sends the
+  // purchase to the backend, which verifies with Google and credits the coins.
+  if (inAndroidApp()) {
+    const token = await auth.currentUser.getIdToken();
+    B4A.CallSub("Main.BuyCoins", false, token);
+    return true;
+  }
+
+  // On the website → IntaSend card / M-Pesa checkout.
   if (!COINS.backendUrl) { toast("Buying coins isn't set up yet.", true); return false; }
   try {
     const token = await auth.currentUser.getIdToken();

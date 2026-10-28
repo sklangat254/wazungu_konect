@@ -2,37 +2,38 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg1: #1f6f73;
-  --bg2: #2a8c8f;
+  --bg1: #1e293b;
+  --bg2: #0f172a;
   --surface: #ffffff;
-  --surface-2: #f3f7f8;
-  --text: #13202b;
-  --muted: #5d6b76;
-  --border: #dbe5e8;
-  --primary: #227a7e;
+  --surface-2: #f5f2fb;
+  --text: #0f172a;
+  --muted: #475569;
+  --border: #e4ddf3;
+  --primary: #7c3aed;
   --primary-ink: #ffffff;
-  --primary-soft: #e3f3f3;
-  --accent: #e2733a;
-  --online: #22a55a;
-  --danger: #d64545;
-  --danger-soft: #fdecec;
-  --shadow: 0 6px 24px rgba(10, 40, 45, .14);
+  --primary-soft: #f2e9fe;
+  --accent: #a855f7;
+  --online: #22c55e;
+  --danger: #ef4444;
+  --danger-soft: #fdeaea;
+  --shadow: 0 6px 24px rgba(15, 23, 42, .18);
   --radius: 20px;
   --nav-h: 68px;
 }
 :root[data-theme="dark"] {
-  --bg1: #0c2a2c;
-  --bg2: #123d40;
-  --surface: #172429;
-  --surface-2: #1e2f35;
-  --text: #e8f0f2;
-  --muted: #9db0b7;
-  --border: #2b4047;
-  --primary: #3aa9ad;
-  --primary-ink: #06191a;
-  --primary-soft: #1f3a3d;
-  --danger-soft: #3a1f22;
-  --shadow: 0 6px 24px rgba(0, 0, 0, .35);
+  --bg1: #0f172a;
+  --bg2: #0b1120;
+  --surface: #1e293b;
+  --surface-2: #273449;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: #334155;
+  --primary: #a855f7;
+  --primary-ink: #0f0a1a;
+  --primary-soft: #2a2140;
+  --accent: #c084fc;
+  --danger-soft: #3a1f26;
+  --shadow: 0 6px 24px rgba(0, 0, 0, .4);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -69,7 +70,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn:active { transform: scale(.98); }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn-primary { background: var(--primary); color: var(--primary-ink); }
-.btn-light { background: #fff; color: #1f6f73; box-shadow: var(--shadow); }
+.btn-light { background: #fff; color: #7c3aed; box-shadow: var(--shadow); }
 .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
 .btn-ghost-light { background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.5); color: #fff; }
 .btn-danger { background: var(--danger-soft); color: var(--danger); }

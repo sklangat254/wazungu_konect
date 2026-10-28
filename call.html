@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#06282a">
+<meta name="theme-color" content="#0b1120">
 <title>Amoriva – Call</title>
 <link rel="stylesheet" href="common.css">
 <style>
-  html, body { height: 100%; background: #06282a; overflow: hidden; }
-  .call { position: fixed; inset: 0; background: #06282a; display: flex; flex-direction: column; }
-  #remote { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #06282a; }
+  html, body { height: 100%; background: #0b1120; overflow: hidden; }
+  .call { position: fixed; inset: 0; background: #0b1120; display: flex; flex-direction: column; }
+  #remote { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #0b1120; }
   #local { position: absolute; top: 16px; right: 16px; width: 110px; height: 150px; object-fit: cover;
-    border-radius: 14px; border: 2px solid rgba(255,255,255,.7); background: #0d3b3e; z-index: 3; transform: scaleX(-1); }
+    border-radius: 14px; border: 2px solid rgba(255,255,255,.7); background: #273449; z-index: 3; transform: scaleX(-1); }
   .overlay { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 10px; color: #fff; text-align: center; padding: 24px;
     background: radial-gradient(circle at 50% 35%, rgba(6,40,42,.25), rgba(6,40,42,.75)); }
   .overlay.hidden { display: none; }
-  .overlay .av { width: 110px; height: 110px; border-radius: 50%; background: #1f6f73; display: grid; place-items: center;
+  .overlay .av { width: 110px; height: 110px; border-radius: 50%; background: #7c3aed; display: grid; place-items: center;
     font-size: 2.6rem; font-weight: 800; margin-bottom: 8px; }
   .overlay h2 { font-size: 1.5rem; }
   .overlay p { opacity: .85; }
@@ -32,14 +32,14 @@
   .topup .opt { background: var(--primary); color: #fff; border: 0; border-radius: 999px; padding: 15px; font-weight: 700;
     font-size: 1rem; cursor: pointer; }
   .topup .opt.ghost { background: rgba(255,255,255,.14); }
-  .topup .opt.end { background: #d64545; }
+  .topup .opt.end { background: #ef4444; }
   .topup small { opacity: .75; }
   .controls { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; justify-content: center;
     gap: 18px; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
   .cbtn { width: 62px; height: 62px; border-radius: 50%; border: 0; font-size: 1.5rem; cursor: pointer; color: #fff;
     background: rgba(255,255,255,.18); display: grid; place-items: center; }
   .cbtn.off { background: #ffffff; color: #13202b; }
-  .cbtn.end { background: #d64545; }
+  .cbtn.end { background: #ef4444; }
   .err { color: #ffd9a8; max-width: 320px; }
 </style>
 </head>
