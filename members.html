@@ -248,31 +248,36 @@
   // Clearly-labelled example members used to top the dashboard up to ~50 when there aren't yet
   // 50 real members, so a new user sees what a full community looks like. Each is tagged PSEUDO.
   // Some are "Online", some are "typing". The pool is built once so it stays stable across renders.
-  const PSEUDO_FIRST = ["Amara","Lukas","Mei","Sofia","Diego","Aisha","Yuki","Noah","Priya","Omar","Lena","Tariq","Chloe","Ravi","Nadia","Ivan","Fatima","Kento","Elena","Mateo","Zara","Hassan","Lin","Bruno","Ingrid","Kwame","Sara","Jin","Marta","Youssef","Ana","Dmitri","Leila","Pablo","Hana","Samuel","Clara","Arjun","Nora","Felix","Maya","Tomas","Rania","Kofi","Isla","Viktor","Amina","Luca","Thandi","Jonas"];
-  // Gender per name (same order), so photos use fpseudoN.jpeg (female) / mpseudoN.jpeg (male).
-  const PSEUDO_GENDER = ["f","m","f","f","m","f","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m"];
+  // Gender of each uploaded photo, indexed by number (slot 1 = index 0). This matches the actual
+  // files in assets/ (…/mpseudo1.jpeg, …/fpseudo7.jpeg, etc.), so every photo path exists.
+  const PHOTO_GENDER = ["m","m","m","m","m","m","f","m","m","m","m","m","f","f","f","f","m","f","m","f","f","f","f","f","f","m","m","f","f","f","m","m","f","f","f","f","f","f","f","m","m","m","m","m","m","f","f","m","f","f","f","m","m","m","m","m"];
+  const FEMALE_NAMES = ["Amara","Mei","Sofia","Aisha","Yuki","Priya","Lena","Chloe","Nadia","Fatima","Elena","Zara","Lin","Ingrid","Sara","Marta","Ana","Leila","Hana","Clara","Nora","Maya","Rania","Isla","Amina","Thandi","Dalia","Noura","Elif"];
+  const MALE_NAMES = ["Lukas","Diego","Noah","Omar","Tariq","Ravi","Ivan","Kento","Mateo","Hassan","Bruno","Kwame","Jin","Youssef","Dmitri","Pablo","Samuel","Arjun","Felix","Tomas","Kofi","Viktor","Luca","Jonas","Andre","Marco","Sergio","Hiro","Daniel"];
   const PSEUDO_LOC = [["NG","English"],["DE","German"],["CN","Chinese"],["BR","Portuguese"],["MX","Spanish"],["EG","Arabic"],["JP","Japanese"],["US","English"],["IN","Hindi"],["SA","Arabic"],["SE","Swedish"],["FR","French"],["IT","Italian"],["RU","Russian"],["KE","Swahili"],["ZA","English"],["KR","Korean"],["TR","Turkish"],["ES","Spanish"],["PT","Portuguese"]];
   const PSEUDO_LEARN = ["English","Spanish","French","Swahili","Arabic","Japanese","German","Chinese","Portuguese","Italian"];
   const PSEUDO_INT = ["Music","Cooking","Travel","Football","Movies","Art","Dance","Food","Books","Photography","Hiking","Gaming"];
-  const PSEUDO_BIO = ["Happy to help with my language — let's practise together!","Love swapping stories about food, music and culture.","Learning every day — tell me about your country!","Looking for a friendly language partner worldwide.","Keen to make friends and exchange languages."];
+  const PSEUDO_BIO = ["Happy to help with my language... let's practise together!","Love swapping stories about food, music and culture.","Learning every day... tell me about your country!","Looking for a friendly language partner worldwide.","Keen to make friends and exchange languages."];
   function buildPseudoPool(n) {
     const pool = [];
+    let fi = 0, mi = 0;
     for (let k = 0; k < n; k++) {
+      const g = PHOTO_GENDER[k % PHOTO_GENDER.length];
+      const name = g === "f" ? FEMALE_NAMES[fi++ % FEMALE_NAMES.length] : MALE_NAMES[mi++ % MALE_NAMES.length];
       const loc = PSEUDO_LOC[k % PSEUDO_LOC.length], speak = loc[1];
       let learn = PSEUDO_LEARN[k % PSEUDO_LEARN.length];
       if (learn === speak) learn = PSEUDO_LEARN[(k + 1) % PSEUDO_LEARN.length];
       pool.push({
-        name: PSEUDO_FIRST[k % PSEUDO_FIRST.length],
+        name,
         country: loc[0], speaks: [speak], learning: [learn],
         interests: [PSEUDO_INT[k % PSEUDO_INT.length], PSEUDO_INT[(k + 5) % PSEUDO_INT.length]],
         bio: PSEUDO_BIO[k % PSEUDO_BIO.length],
-        photo: "assets/" + PSEUDO_GENDER[k % PSEUDO_GENDER.length] + "pseudo" + (k + 1) + ".jpeg",
+        photo: "assets/" + g + "pseudo" + (k + 1) + ".jpeg",
         mode: (k % 3 === 1) ? "typing" : "online"
       });
     }
     return pool;
   }
-  const PSEUDO_POOL = buildPseudoPool(50);
+  const PSEUDO_POOL = buildPseudoPool(56);
   function pseudoMemberCard(u, i) {
     const statusHTML = u.mode === "typing"
       ? `<span class="status-text typing">${esc(countryName(u.country))} · typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
