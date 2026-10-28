@@ -96,6 +96,10 @@
     list.innerHTML = rows.map((r, idx) => {
       const { uid, u, online } = r;
       const st = statusLabel(statuses[uid]);
+      const typing = statuses[uid] && statuses[uid].typing === true;
+      const statusHTML = typing
+        ? `<span class="status-text typing">${esc(countryName(u.country))}${countryName(u.country) ? " · " : ""}typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
+        : `<span class="status-text ${st.online ? "online" : ""}">${countryName(u.country) ? esc(countryName(u.country)) + " · " : ""}${st.text}</span>`;
       const matchLine = r.canTeach.length
         ? `<span class="pill" style="margin-top:6px">✨ Speaks ${esc(r.canTeach.join(", "))}</span>`
         : r.canHelp.length ? `<span class="pill" style="margin-top:6px">🤝 Learning ${esc(r.canHelp.join(", "))}</span>` : "";
@@ -103,7 +107,7 @@
         ${avatarHTML(u, uid, online)}
         <div class="info">
           <div class="name"><a href="profile.html?u=${encodeURIComponent(uid)}" style="color:inherit">${esc(u.name)}</a> ${flag(u.country)}</div>
-          <div class="status-text ${st.online ? "online" : ""}">${countryName(u.country) ? esc(countryName(u.country)) + " · " : ""}${st.text}</div>
+          ${statusHTML}
           ${matchLine}
           ${u.bio ? `<p class="bio">${esc(u.bio)}</p>` : ""}
           <div class="lang-row"><b>Speaks:</b> ${esc((u.speaks || []).join(", "))}</div>

@@ -140,11 +140,18 @@
     $("#headAvatar").innerHTML = avatarHTML(other, otherUid, false);
     renderProfileView();
 
-    ref("status/" + otherUid).on("value", (s) => {
-      const st = statusLabel(s.val());
-      $("#headStatus").textContent = st.text;
+    let otherTyping = false;
+    const applyHeadStatus = () => {
+      const h = $("#headStatus");
+      if (otherTyping) { h.className = "status-text typing"; h.innerHTML = `typing <span class="typing-dots"><span></span><span></span><span></span></span>`; return; }
+      const st = statusLabel(lastOtherStatus);
+      h.className = "status-text" + (st.online ? " online" : "");
+      h.textContent = st.text;
       const dot = $("#headAvatar .dot"); if (dot) dot.classList.toggle("online", st.online);
-    });
+    };
+    let lastOtherStatus = null;
+    ref("status/" + otherUid).on("value", (s) => { lastOtherStatus = s.val(); applyHeadStatus(); });
+    ref(`typing/${cid}/${otherUid}`).on("value", (s) => { otherTyping = s.val() === true; applyHeadStatus(); });
 
     ref(`blocks/${myUid}/${otherUid}`).on("value", (s) => { iBlocked = s.exists(); updateBlockUI(); });
     ref(`blocks/${otherUid}/${myUid}`).on("value", (s) => { theyBlocked = s.exists(); updateBlockUI(); });
@@ -192,6 +199,7 @@
     if (Date.now() - lastSend < 700) return; // simple flood guard
     lastSend = Date.now();
     $("#text").value = ""; autoGrow();
+    setTyping(false);
 
     const key = ref("messages/" + cid).push().key;
     const preview = text.length > 80 ? text.slice(0, 80) + "…" : text;
@@ -208,9 +216,27 @@
   }
 
   function autoGrow() { const t = $("#text"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; }
-  $("#text").addEventListener("input", autoGrow);
+
+  // live typing presence (per chat + a global flag for the members list / landing page)
+  let typingOn = false, typingTimer = null;
+  function setTyping(on) {
+    if (on !== typingOn) {
+      typingOn = on;
+      ref(`typing/${cid}/${myUid}`).set(on);
+      ref(`status/${myUid}/typing`).set(on);
+    }
+    clearTimeout(typingTimer);
+    if (on) typingTimer = setTimeout(() => setTyping(false), 3000);
+  }
+  function onType() {
+    autoGrow();
+    if (unlocked && !iBlocked && !theyBlocked) setTyping($("#text").value.trim().length > 0);
+  }
+  $("#text").addEventListener("input", onType);
+  $("#text").addEventListener("blur", () => setTyping(false));
   $("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); send(); } });
   $("#sendBtn").onclick = send;
+  window.addEventListener("pagehide", () => setTyping(false));
 
   function setComposer(enabled, note) {
     $("#composer").classList.toggle("hidden", !enabled);

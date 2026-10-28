@@ -232,7 +232,7 @@ function requireAuth({ needProfile = true } = {}) {
   return new Promise((resolve) => {
     const off = auth.onAuthStateChanged(async (user) => {
       off();
-      if (!user) { location.replace("auth.html"); return; }
+      if (!user || user.isAnonymous) { location.replace("auth.html"); return; }
       const snap = await ref("users/" + user.uid).once("value");
       const profile = snap.val();
       if (needProfile && (!profile || !profile.profileComplete)) { location.replace("setup.html"); return; }

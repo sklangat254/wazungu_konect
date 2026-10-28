@@ -32,9 +32,26 @@
   <!-- actions for my own profile -->
   <div class="card stack hidden" id="myActions">
     <a class="btn btn-primary" href="setup.html?edit=1">✏️ Edit profile</a>
+    <button class="btn btn-outline" id="reviewBtn">⭐ Leave a review</button>
     <button class="btn btn-outline" id="themeBtn">🌙 Switch theme</button>
     <a class="btn btn-outline" href="terms.html">📄 Terms, rules &amp; privacy</a>
     <button class="btn btn-outline" id="logoutBtn">Log out</button>
+  </div>
+
+  <!-- review sheet -->
+  <div class="sheet-bg" id="reviewSheet">
+    <div class="sheet">
+      <h3>Share your experience</h3>
+      <p class="muted small" style="margin-bottom:10px">Your review may appear on the Amoriva welcome screen for new members.</p>
+      <div class="field">
+        <div id="starPick" style="font-size:1.8rem;letter-spacing:4px;cursor:pointer">☆☆☆☆☆</div>
+      </div>
+      <div class="field"><textarea class="input" id="reviewText" maxlength="400" placeholder="What do you like about Amoriva?"></textarea></div>
+      <div class="stack">
+        <button class="btn btn-primary" id="reviewSend">Post review</button>
+        <button class="btn btn-outline" data-close>Cancel</button>
+      </div>
+    </div>
   </div>
 
   <!-- actions for someone else's profile -->
@@ -86,6 +103,7 @@
       $("#gridHead").textContent = "My posts";
       $("#themeBtn").onclick = toggleTheme;
       $("#logoutBtn").onclick = logout;
+      wireReview(p);
       wireDelete();
     } else {
       $("#otherActions").classList.remove("hidden");
@@ -146,6 +164,31 @@
     $("#reportBtn").onclick = async () => {
       try { await ref("reports").push({ by: myUid, against: uid, reason: "Reported from profile", at: TS }); toast("Thanks — report sent."); }
       catch (e) { toast("Couldn't send report.", true); }
+    };
+  }
+
+  function wireReview(p) {
+    let stars = 5;
+    const paint = () => $("#starPick").textContent = "★★★★★☆☆☆☆☆".slice(5 - stars, 10 - stars);
+    paint();
+    $("#starPick").onclick = (e) => {
+      const rect = $("#starPick").getBoundingClientRect();
+      stars = Math.min(5, Math.max(1, Math.ceil(((e.clientX - rect.left) / rect.width) * 5)));
+      paint();
+    };
+    const open = () => $("#reviewSheet").classList.add("show");
+    const close = () => $("#reviewSheet").classList.remove("show");
+    $("#reviewBtn").onclick = open;
+    $$("[data-close]", $("#reviewSheet")).forEach((b) => b.onclick = close);
+    $("#reviewSheet").onclick = (e) => { if (e.target === $("#reviewSheet")) close(); };
+    $("#reviewSend").onclick = async () => {
+      const text = $("#reviewText").value.trim();
+      if (!text) { toast("Please write a short review.", true); return; }
+      try {
+        await ref("reviews").push({ by: myUid, name: p.name, country: p.country || "", stars, text, at: TS });
+        close(); toast("Thanks for your review!");
+        $("#reviewText").value = "";
+      } catch (e) { toast("Couldn't post review.", true); }
     };
   }
 

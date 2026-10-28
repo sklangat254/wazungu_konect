@@ -30,6 +30,25 @@
         "$uid": { ".write": "auth != null && auth.uid === $uid" }
       },
 
+      "typing": {
+        "$chatId": {
+          ".read": "auth != null",
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.isBoolean()"
+          }
+        }
+      },
+
+      "reviews": {
+        ".read": "auth != null",
+        ".indexOn": ["at"],
+        "$reviewId": {
+          ".write": "auth != null && ((!data.exists() && newData.child('by').val() === auth.uid) || (!newData.exists() && data.child('by').val() === auth.uid))",
+          ".validate": "newData.hasChildren(['by','name','text','at']) && newData.child('by').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 400 && newData.child('at').val() <= now"
+        }
+      },
+
       "messages": {
         "$chatId": {
           ".read": "auth != null && ($chatId.beginsWith(auth.uid + '_') || $chatId.endsWith('_' + auth.uid))",

@@ -18,19 +18,22 @@
   </div>
 
   <div class="slides">
-    <!-- Slide: People Around the World -->
+    <!-- Slide: People Around the World (live) -->
     <section class="slide on">
       <div class="hero" style="margin-top:6px">
         <h1>People Around the World</h1>
-        <p>Meet language partners from many countries and swap words, food, music and everyday life.</p>
+        <p><span id="liveCount">—</span> members · say hello and start a friendly conversation.</p>
       </div>
-      <div class="card stack">
-        <div class="feature"><div class="ic" style="background:var(--primary-soft)">🇰🇪</div><div><h2>Kenya</h2><p class="muted small">Speaks Swahili · learning English</p></div></div>
-        <div class="feature"><div class="ic" style="background:var(--primary-soft)">🇩🇪</div><div><h2>Germany</h2><p class="muted small">Speaks German · learning Swahili</p></div></div>
-        <div class="feature"><div class="ic" style="background:var(--primary-soft)">🇫🇷</div><div><h2>France</h2><p class="muted small">Speaks French · learning English</p></div></div>
-        <div class="feature"><div class="ic" style="background:var(--primary-soft)">🇧🇷</div><div><h2>Brazil</h2><p class="muted small">Speaks Portuguese · learning English</p></div></div>
+      <div class="card stack" id="liveMembers">
+        <p class="muted small center">Loading members…</p>
       </div>
-      <p class="small center" style="color:#fff;opacity:.85">Examples of the exchanges you'll find on Amoriva.</p>
+      <div class="card hidden" id="reviewCard">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div id="reviewAvatar"></div>
+          <div><div style="font-weight:800" id="reviewName"></div><div class="small" id="reviewStars" style="color:#f5a623"></div></div>
+        </div>
+        <p class="small muted" id="reviewBody" style="font-style:italic"></p>
+      </div>
     </section>
 
     <!-- Slide 1 -->
@@ -100,8 +103,54 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="common.js"></script>
 <script>
-  // Already signed in? Go straight to the app.
-  const offAuth = auth.onAuthStateChanged((u) => { offAuth(); if (u) location.replace("members.html"); });
+  // A real signed-in member goes straight to the app. A logged-out visitor is signed in
+  // anonymously so the welcome screen can read the REAL online members and latest review.
+  let showcaseLoaded = false;
+  auth.onAuthStateChanged((u) => {
+    if (u && !u.isAnonymous) { location.replace("members.html"); return; }
+    if (!u) { auth.signInAnonymously().catch(() => {}); return; }
+    if (!showcaseLoaded) { showcaseLoaded = true; loadShowcase(); }
+  });
+
+  function loadShowcase() {
+    // Live online members (real presence)
+    ref("status").on("value", async (s) => {
+      const online = [];
+      s.forEach((c) => { const v = c.val(); if (v && v.state === "online") online.push({ uid: c.key, typing: v.typing === true }); });
+      $("#liveCount").textContent = online.length > 0 ? `${online.length} online now` : "A growing community";
+      const pick = online.slice(0, 4);
+      const box = $("#liveMembers");
+      if (!pick.length) { box.innerHTML = `<p class="muted small center">Be one of the first to say hello — create your free account below.</p>`; return; }
+      const cards = await Promise.all(pick.map(async (o) => {
+        const u = (await ref("users/" + o.uid).once("value")).val();
+        if (!u || !u.profileComplete) return "";
+        const line = o.typing
+          ? `<span class="status-text typing">typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
+          : `<span class="status-text online">Online now</span>`;
+        const learn = (u.learning || [])[0], speak = (u.speaks || [])[0];
+        return `<div class="member">
+          ${avatarHTML(u, o.uid, true)}
+          <div class="info">
+            <div class="name">${esc(u.name)} ${flag(u.country)}</div>
+            ${line}
+            ${speak ? `<div class="lang-row"><b>Speaks:</b> ${esc(speak)}${learn ? ` · <b>learning</b> ${esc(learn)}` : ""}</div>` : ""}
+          </div></div>`;
+      }));
+      const html = cards.filter(Boolean).join("");
+      box.innerHTML = html || `<p class="muted small center">Members are online — create your free account to meet them.</p>`;
+    });
+
+    // Latest real review (hidden until there is one)
+    ref("reviews").orderByChild("at").limitToLast(1).on("value", (s) => {
+      let rev = null; s.forEach((c) => rev = c.val());
+      if (!rev) { $("#reviewCard").classList.add("hidden"); return; }
+      $("#reviewCard").classList.remove("hidden");
+      $("#reviewAvatar").innerHTML = avatarHTML({ name: rev.name }, rev.by);
+      $("#reviewName").textContent = `${rev.name} ${flag(rev.country)}`;
+      $("#reviewStars").textContent = "★★★★★".slice(0, Math.max(1, Math.min(5, rev.stars || 5)));
+      $("#reviewBody").textContent = `“${rev.text}”`;
+    });
+  }
 
   const slides = $$(".slide"), dots = $$("#dots span");
   let i = 0;
