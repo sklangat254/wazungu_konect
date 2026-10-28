@@ -6,17 +6,78 @@
 <meta name="theme-color" content="#0f172a">
 <title>Amoriva – Members</title>
 <link rel="stylesheet" href="common.css">
+<style>
+  .top-actions { display: flex; align-items: center; gap: 8px; }
+  .self-online { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-soft); color: var(--primary);
+    border-radius: 999px; padding: 5px 11px; font-size: .78rem; font-weight: 800; white-space: nowrap; }
+  .self-online .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--online); box-shadow: 0 0 0 3px rgba(34,197,94,.25); }
+  .bell { position: relative; background: none; border: none; cursor: pointer; font-size: 1.3rem; line-height: 1; padding: 4px; color: inherit; }
+  .bell .badge { position: absolute; top: -2px; right: -4px; background: #ef4444; color: #fff; font-size: .62rem; font-weight: 800;
+    min-width: 16px; height: 16px; border-radius: 999px; display: grid; place-items: center; padding: 0 3px; }
+  .notif-pop { position: absolute; top: 56px; right: 10px; width: min(300px, 86vw); background: var(--surface); color: var(--text);
+    border-radius: 14px; box-shadow: var(--shadow); z-index: 60; overflow: hidden; }
+  .notif-pop .nhead { font-weight: 800; padding: 12px 14px; border-bottom: 1px solid var(--surface-2); }
+  .notif-item { display: flex; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--surface-2); }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item .ni { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--primary-soft); flex-shrink: 0; }
+  .notif-item .nt { font-weight: 700; font-size: .9rem; }
+  .notif-item .nd { font-size: .8rem; color: var(--muted); }
+
+  .invite-panel { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    color: #fff; border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .invite-panel .ip-txt { flex: 1; min-width: 0; }
+  .invite-panel .ip-txt b { display: block; font-size: .98rem; }
+  .invite-panel .ip-txt span { font-size: .8rem; opacity: .9; }
+  .btn-red { background: #ef4444; color: #fff; border: none; border-radius: 999px; padding: 10px 16px; font-weight: 800;
+    font-size: .86rem; cursor: pointer; white-space: nowrap; box-shadow: 0 6px 16px rgba(239,68,68,.4); }
+  .btn-red:active { transform: translateY(1px); }
+
+  .join-pop { position: fixed; left: 50%; transform: translateX(-50%) translateY(20px); bottom: calc(var(--nav-h, 64px) + 14px);
+    width: min(320px, 90vw); background: var(--surface); color: var(--text); border-radius: 16px; box-shadow: 0 12px 34px rgba(0,0,0,.28);
+    padding: 14px 16px 16px; z-index: 55; opacity: 0; pointer-events: none; transition: opacity .35s, transform .35s; }
+  .join-pop.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .join-pop .jtitle { font-weight: 800; font-size: .82rem; letter-spacing: .3px; color: var(--primary); margin-bottom: 10px; }
+  .join-pop .jrow { display: flex; align-items: center; gap: 12px; }
+  .join-pop .jface { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; font-size: 1.6rem;
+    background: var(--primary-soft); position: relative; flex-shrink: 0; }
+  .join-pop .jface .jflag { position: absolute; right: -2px; bottom: -2px; font-size: 1rem; background: var(--surface); border-radius: 50%; }
+  .join-pop .jname { font-weight: 800; font-size: 1rem; }
+  .join-pop .jnum { font-weight: 800; font-size: 1.15rem; }
+  .join-pop .jex { font-size: .62rem; color: var(--muted); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; margin-left: 6px; }
+  .join-pop .jlang { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .join-pop .jlang .jlabel { font-size: .78rem; color: var(--muted); font-weight: 700; }
+  .join-pop .jlang .jpill { flex: 1; text-align: center; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff;
+    border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: .9rem; }
+  .join-pop .jclose { position: absolute; top: 8px; right: 12px; background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
+</style>
 </head>
 <body>
 <div class="app has-nav">
   <div class="topbar">
     <div class="brand"><div class="logo">💬</div>Amoriva</div>
-    <span class="icon-btn" id="onlineCount">● 0 online</span>
+    <div class="top-actions">
+      <span class="self-online" id="selfOnline"><span class="dot"></span>You · Online</span>
+      <button class="bell" id="bellBtn" aria-label="Notifications">🔔<span class="badge" id="bellBadge">3</span></button>
+    </div>
+  </div>
+
+  <!-- Notification dropdown -->
+  <div class="notif-pop hidden" id="notifPop">
+    <div class="nhead">Notifications</div>
+    <div class="notif-item"><div class="ni">📤</div><div><div class="nt">Invite friends</div><div class="nd">Invite a friend to unlock chatting and grow Amoriva.</div></div></div>
+    <div class="notif-item"><div class="ni">✅</div><div><div class="nt">You're all set</div><div class="nd">Your account was created successfully. Welcome aboard!</div></div></div>
+    <div class="notif-item"><div class="ni">🌍</div><div><div class="nt">Say hello</div><div class="nd">Enjoy interacting with members from around the world.</div></div></div>
+  </div>
+
+  <!-- Invite panel (auto-removes once the user has invited a friend) -->
+  <div class="invite-panel hidden" id="invitePanel">
+    <div class="ip-txt"><b>Invite a friend to start chatting</b><span>Chatting unlocks once you invite someone to Amoriva.</span></div>
+    <button class="btn-red" id="invitePanelBtn">Invite now</button>
   </div>
 
   <div class="card">
     <h1>Find a language partner</h1>
-    <p class="muted small" style="margin-bottom:14px">Real members, real-time status. Tap <b>Message</b> to start a conversation.</p>
+    <p class="muted small" style="margin-bottom:14px"><span id="onlineCount">● 0 online</span> · Tap <b>Message</b> to start a conversation.</p>
     <input class="input" id="search" placeholder="Search by name, country, language or interest">
     <div class="scroll-x" id="filters" style="margin-top:12px">
       <button class="chip on" data-f="all">All</button>
@@ -30,6 +91,42 @@
   <div id="list"><div class="card"><div class="loader"></div></div></div>
 </div>
 
+<!-- "Active Member" welcome popup, cycles above the bottom menu -->
+<div class="join-pop" id="joinPop">
+  <button class="jclose" id="joinClose" aria-label="Close">×</button>
+  <div class="jtitle">ACTIVE MEMBER</div>
+  <div class="jrow">
+    <div class="jface"><span id="joinEmoji">😊</span><span class="jflag" id="joinFlag"></span></div>
+    <div style="flex:1;min-width:0">
+      <div class="jname"><span id="joinName"></span><span class="jex hidden" id="joinEx">example</span></div>
+      <div class="jnum" id="joinNum"></div>
+    </div>
+  </div>
+  <div class="jlang"><span class="jlabel">lang</span><span class="jpill" id="joinLang"></span></div>
+</div>
+
+<!-- Invite "how to" sheet -->
+<div class="sheet-bg" id="inviteSheet">
+  <div class="sheet">
+    <h3>Invite a friend to start chatting</h3>
+    <p class="muted small" style="margin-bottom:12px">Amoriva grows through friends. Share your invite code — once a friend joins with it, you're set.</p>
+    <ol style="padding-left:20px;margin-bottom:14px;font-size:.92rem;line-height:1.7">
+      <li>Copy your invite code below.</li>
+      <li>Share it with a friend on WhatsApp, SMS or anywhere.</li>
+      <li>Ask them to join Amoriva and enter your code.</li>
+    </ol>
+    <div class="field">
+      <label class="small muted">Your invite code</label>
+      <input class="input" id="myCode" readonly style="font-weight:800;letter-spacing:.5px">
+    </div>
+    <div class="stack" style="margin-top:4px">
+      <button class="btn btn-primary" id="shareCode">📤 Share invite</button>
+      <button class="btn btn-outline" id="copyCode">📋 Copy code</button>
+      <button class="btn btn-outline" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -37,15 +134,82 @@
 <script>
   let me, myUid, users = {}, statuses = {}, blocked = {}, filter = "all";
 
+  let hasInvited = false, joinTimer = null, joinIdx = 0;
+
   requireAuth().then(({ user, profile }) => {
     me = profile; myUid = user.uid;
     renderNav("members");
     renderAd($("#ad1"));
+    $("#myCode").value = "Amoriva" + myUid.slice(0, 6).toUpperCase();
 
     ref("blocks/" + myUid).on("value", (s) => { blocked = s.val() || {}; render(); });
     ref("users").orderByChild("lastSeen").limitToLast(300).on("value", (s) => { users = s.val() || {}; render(); });
     ref("status").on("value", (s) => { statuses = s.val() || {}; render(); });
+
+    // Invite panel disappears once the member has invited a friend (or unlocked chatting).
+    ref("users/" + myUid + "/hasInvited").on("value", (s) => {
+      hasInvited = s.val() === true || (me && me.chatUnlocked === true);
+      $("#invitePanel").classList.toggle("hidden", hasInvited);
+    });
+
+    startJoinPopups();
   });
+
+  // ----- Notification bell -----
+  $("#bellBtn").onclick = (e) => { e.stopPropagation(); $("#notifPop").classList.toggle("hidden"); $("#bellBadge").classList.add("hidden"); };
+  document.addEventListener("click", (e) => {
+    if (!$("#notifPop").classList.contains("hidden") && !e.target.closest("#notifPop") && !e.target.closest("#bellBtn"))
+      $("#notifPop").classList.add("hidden");
+  });
+
+  // ----- Invite panel + sheet -----
+  const openSheet = () => $("#inviteSheet").classList.add("show");
+  const closeSheet = () => $("#inviteSheet").classList.remove("show");
+  $("#invitePanelBtn").onclick = openSheet;
+  $$("[data-close]", $("#inviteSheet")).forEach((b) => b.onclick = closeSheet);
+  $("#inviteSheet").onclick = (e) => { if (e.target === $("#inviteSheet")) closeSheet(); };
+  async function markInvited() {
+    hasInvited = true;
+    $("#invitePanel").classList.add("hidden");
+    try { await ref("users/" + myUid + "/hasInvited").set(true); } catch (e) {}
+  }
+  $("#copyCode").onclick = () => { navigator.clipboard?.writeText($("#myCode").value); toast("Code copied"); markInvited(); };
+  $("#shareCode").onclick = () => {
+    const data = { title: "Amoriva", text: `Join me on Amoriva! Use my invite code: ${$("#myCode").value}`, url: location.origin + "/index.html" };
+    if (navigator.share) navigator.share(data).then(markInvited).catch(() => {});
+    else { navigator.clipboard?.writeText(data.text + " " + data.url); toast("Invite copied"); markInvited(); }
+  };
+
+  // ----- "Active Member" welcome popups -----
+  function joinRoster() {
+    // Real members first, then the clearly-labelled examples — so the welcome popup reflects
+    // exactly who's shown on the dashboard.
+    const real = Object.entries(users)
+      .filter(([uid, u]) => uid !== myUid && u.profileComplete && !blocked[uid])
+      .map(([uid, u]) => ({ name: u.name, country: u.country, lang: (u.speaks || [])[0] || "English", example: false }));
+    const pseudo = PSEUDO_POOL.map((u) => ({ name: u.name, country: u.country, lang: u.speaks[0], example: true }));
+    return real.concat(pseudo);
+  }
+  function showJoinPopup() {
+    const roster = joinRoster();
+    if (!roster.length) return;
+    const m = roster[joinIdx % roster.length]; joinIdx++;
+    const num = (Math.floor(Math.random() * 9000) + 100).toLocaleString("en-US") + ".00"; // random figure, .00 decimals
+    $("#joinFlag").textContent = flag(m.country);
+    $("#joinName").textContent = m.name;
+    $("#joinEx").classList.toggle("hidden", !m.example);
+    $("#joinNum").textContent = num;
+    $("#joinLang").textContent = m.lang;
+    const pop = $("#joinPop");
+    pop.classList.add("show");
+    clearTimeout(pop._hide);
+    pop._hide = setTimeout(() => pop.classList.remove("show"), 5000);
+  }
+  function startJoinPopups() {
+    setTimeout(showJoinPopup, 4000);          // first one shortly after landing
+    joinTimer = setInterval(showJoinPopup, 30000); // then every 30 seconds
+  }
+  $("#joinClose").onclick = () => $("#joinPop").classList.remove("show");
 
   $("#filters").onclick = (e) => {
     const b = e.target.closest(".chip"); if (!b) return;
