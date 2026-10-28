@@ -63,6 +63,48 @@ const CONVERSATION_STARTERS = [
   "What music is popular where you are right now?"
 ];
 
+/* ---------- Demo (pseudo) chat scripts ----------
+   A foreign example member asks the user about their country. Each pseudo account starts the
+   topics at a different offset and uses different phrasing, so no two demo chats read the same.
+   These are clearly-labelled DEMO conversations — the user always knows the member isn't real. */
+const PSEUDO_TOPICS = [
+  "the weather and climate where you live right now",
+  "the most popular sport and which teams people support",
+  "a tourist attraction a first-time visitor shouldn't miss",
+  "a traditional dish you'd tell me to try",
+  "the music and dances your country is known for",
+  "what everyday life is like for young people there",
+  "a festival or celebration you really look forward to",
+  "a word or greeting in your language I could learn",
+  "the kind of landscapes and wildlife you have",
+  "something about your culture that makes you proud",
+  "the best time of year for a visitor to come",
+  "a street food or drink I have to taste"
+];
+function pseudoChatScript(seed, name, country) {
+  const land = countryName(country) || "another country";
+  const intros = [
+    `Hi! 👋 I'm ${name} from ${land}. Great to meet you — I'd love to learn about your country!`,
+    `Hello from ${land}! 😊 I'm ${name}. I'm curious about where you're from — mind if I ask you a few things?`,
+    `Hey there! ${name} here, from ${land}. I enjoy meeting people worldwide — tell me about your home!`
+  ];
+  const phr = [
+    (t) => `First — what's ${t}?`,
+    (t) => `That's great! I'd also love to know about ${t}.`,
+    (t) => `Interesting 😊 And ${t}?`,
+    (t) => `Thanks for sharing! How about ${t}?`,
+    (t) => `You're making me want to visit! What's ${t}?`,
+    (t) => `One more I'm curious about — ${t}?`
+  ];
+  const lines = [intros[seed % intros.length]];
+  for (let k = 0; k < phr.length; k++) {
+    const t = PSEUDO_TOPICS[(seed + k) % PSEUDO_TOPICS.length];
+    lines.push(phr[k](t));
+  }
+  lines.push(`This has been lovely — thank you! 🌍 (Reminder: this is a demo chat with an example member. Invite a friend to start real conversations.)`);
+  return lines;
+}
+
 /* ---------- Helpers ---------- */
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];

@@ -117,11 +117,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="common.js"></script>
 <script>
-  const otherUid = new URLSearchParams(location.search).get("u");
+  const params = new URLSearchParams(location.search);
+  const otherUid = params.get("u");
+  const pseudoSeed = params.get("pseudo");
+  const pseudoMode = pseudoSeed !== null;
   let myUid, me, other, cid, iBlocked = false, theyBlocked = false, unlocked = false, gated = false, lastDay = "", lastSend = 0, msgCount = 0;
+  let pseudoSend = () => {};
   function requestUnlock() { open("inviteSheet"); }
 
-  requireAuth().then(async ({ user, profile }) => {
+  if (pseudoMode) { initPseudoChat(); }
+  else requireAuth().then(async ({ user, profile }) => {
     myUid = user.uid; me = profile;
     if (!otherUid || otherUid === myUid) { location.replace("members.html"); return; }
     cid = chatIdFor(myUid, otherUid);
@@ -232,6 +237,7 @@
   }
   function onType() {
     autoGrow();
+    if (pseudoMode) return;
     if (unlocked && !iBlocked && !theyBlocked) setTyping($("#text").value.trim().length > 0);
   }
   // When chatting is still locked, the box is read-only: any attempt to write (tap, focus or
@@ -240,12 +246,12 @@
   $("#text").addEventListener("focus", () => { if (gated) { $("#text").blur(); requestUnlock(); } });
   $("#text").addEventListener("keydown", (e) => {
     if (gated) { e.preventDefault(); requestUnlock(); return; }
-    if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); send(); }
+    if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); pseudoMode ? pseudoSend() : send(); }
   });
   $("#text").addEventListener("input", onType);
-  $("#text").addEventListener("blur", () => setTyping(false));
-  $("#sendBtn").onclick = () => { if (gated) { requestUnlock(); return; } send(); };
-  window.addEventListener("pagehide", () => setTyping(false));
+  $("#text").addEventListener("blur", () => { if (!pseudoMode) setTyping(false); });
+  $("#sendBtn").onclick = () => { if (pseudoMode) { pseudoSend(); return; } if (gated) { requestUnlock(); return; } send(); };
+  window.addEventListener("pagehide", () => { if (!pseudoMode) setTyping(false); });
 
   function setComposer(enabled, note) {
     $("#composer").classList.toggle("hidden", !enabled);
@@ -287,7 +293,8 @@
   }
 
   // Sheets
-  const open = (id) => $("#" + id).classList.add("show");
+  let sheetGuardUntil = 0;
+  const open = (id) => { $("#" + id).classList.add("show"); sheetGuardUntil = Date.now() + 400; };
   const closeAll = () => $$(".sheet-bg").forEach((s) => s.classList.remove("show"));
   $("#menuBtn").onclick = () => open("menu");
 
@@ -304,7 +311,9 @@
     } catch (e) { toast("Couldn't start the call.", true); }
   };
   $$("[data-close]").forEach((b) => b.onclick = closeAll);
-  $$(".sheet-bg").forEach((bg) => bg.onclick = (e) => { if (e.target === bg) closeAll(); });
+  // The guard ignores the stray click from the same tap that opened the sheet (which was
+  // closing it immediately), while still allowing a genuine tap on the backdrop to close it.
+  $$(".sheet-bg").forEach((bg) => bg.onclick = (e) => { if (e.target === bg && Date.now() > sheetGuardUntil) closeAll(); });
 
   // Invite / unlock
   $("#lockBtn").onclick = () => open("inviteSheet");
@@ -341,6 +350,88 @@
       closeAll(); toast("Thanks — report sent. You can also block this member.");
     } catch (e) { toast("Couldn't send report.", true); }
   };
+
+  /* ---------- Pseudo (demo) chat ---------- */
+  function addPseudoMsg(text, mine) {
+    msgCount++;
+    $("#starters").classList.add("hidden");
+    const box = $("#msgs");
+    const el = document.createElement("div");
+    el.className = "msg " + (mine ? "me" : "them");
+    el.innerHTML = `${esc(text)}<span class="t">${clock(Date.now())}</span>`;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function initPseudoChat() {
+    const { user, profile } = await requireAuth();
+    myUid = user.uid; me = profile;
+    const name = params.get("pn") || "Member";
+    const country = params.get("pc") || "";
+    const seed = parseInt(pseudoSeed, 10) || 0;
+    other = { name, country, speaks: [], learning: [] };
+
+    // Header
+    $("#headName").innerHTML = `${esc(name)} ${flag(country)}`;
+    $("#headAvatar").innerHTML = avatarHTML({ name }, name, true);
+    const headOnline = () => { const h = $("#headStatus"); h.className = "status-text online"; h.textContent = "Online · demo account"; };
+    headOnline();
+
+    // Demo chats aren't real people, so the call/block/report actions don't apply.
+    $("#callBtn").style.display = "none";
+    $("#blockBtn").style.display = "none";
+    $("#reportOpen").style.display = "none";
+    $("#profileView").innerHTML = `<div class="member" style="margin-bottom:6px">
+      ${avatarHTML({ name }, name, true)}
+      <div class="info">
+        <div class="name">${esc(name)} ${flag(country)} <span class="tag" style="background:#fde68a;color:#92400e;font-weight:800">PSEUDO</span></div>
+        <div class="status-text">${esc(countryName(country))} · example member</div>
+        <p class="bio">This is a demo profile that shows how a real chat looks. Invite a friend to chat with real members.</p>
+      </div></div>`;
+
+    // Composer is always open in demo mode (no invite gate).
+    gated = false; unlocked = true;
+    $("#composer").classList.remove("hidden");
+    const t = $("#text"); t.readOnly = false; t.placeholder = "Type a message…";
+    $("#lockHint").classList.add("hidden");
+
+    // Clear note telling the user this is a pseudo chat, before the conversation starts.
+    const box = $("#msgs");
+    const banner = document.createElement("div");
+    banner.className = "notice";
+    banner.style.cssText = "background:#fde68a;color:#92400e;font-weight:600";
+    banner.innerHTML = `💛 This is a <b>pseudo (demo) chat</b>. <b>${esc(name)}</b> is an example member, not a real person — it's here to show you how Amoriva works while real members join. Invite a friend to start real conversations.`;
+    box.appendChild(banner);
+
+    // Scripted conversation. Some demo members open the chat; others wait for you to say hi.
+    const lines = pseudoChatScript(seed, name, country);
+    let li = 0, awaiting = false;
+    const botFirst = seed % 2 === 0;
+
+    function botSay() {
+      if (li >= lines.length || awaiting) return;
+      awaiting = true;
+      const h = $("#headStatus");
+      h.className = "status-text typing";
+      h.innerHTML = `typing <span class="typing-dots"><span></span><span></span><span></span></span>`;
+      setTimeout(() => {
+        addPseudoMsg(lines[li++], false);
+        headOnline();
+        awaiting = false;
+      }, 1100);
+    }
+
+    pseudoSend = () => {
+      const text = $("#text").value.trim();
+      if (!text || awaiting) return;      // you must reply before the next demo message
+      $("#text").value = ""; autoGrow();
+      addPseudoMsg(text, true);
+      botSay();                           // the demo member replies to what you said
+    };
+
+    if (botFirst) setTimeout(botSay, 700); // this member greets first; you reply to continue
+    else setTimeout(() => $("#starters") && showStarters(), 700); // otherwise nudge you to start
+  }
 </script>
 </body>
 </html>

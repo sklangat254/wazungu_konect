@@ -246,10 +246,11 @@
     return pool;
   }
   const PSEUDO_POOL = buildPseudoPool(50);
-  function pseudoMemberCard(u) {
+  function pseudoMemberCard(u, i) {
     const statusHTML = u.mode === "typing"
       ? `<span class="status-text typing">${esc(countryName(u.country))} · typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
       : `<span class="status-text online">${esc(countryName(u.country))} · Online now</span>`;
+    const demoHref = `chat.html?pseudo=${i}&pn=${encodeURIComponent(u.name)}&pc=${encodeURIComponent(u.country)}`;
     return `<div class="card member">
       ${avatarHTML(u, u.name, true)}
       <div class="info">
@@ -262,8 +263,8 @@
         <div class="lang-row"><b>Speaks:</b> ${esc(u.speaks.join(", "))}</div>
         <div class="lang-row"><b>Learning:</b> ${esc(u.learning.join(", "))}</div>
         <div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>
-        <div class="tag" style="margin-top:8px;background:var(--surface-2);color:var(--muted)">Example profile · not a real member</div>
-        <div class="actions"><button class="btn btn-primary btn-sm pseudo-msg" style="display:block;width:100%;text-align:center">💬 Message</button></div>
+        <div class="tag" style="margin-top:8px;background:var(--surface-2);color:var(--muted)">Example profile · tap Message for a demo chat</div>
+        <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="${demoHref}">💬 Message</a></div>
       </div>
     </div>`;
   }
@@ -299,17 +300,15 @@
     // so a new user sees a full-looking community. Real members always come first.
     if (filter === "all" && !q) {
       const need = Math.max(0, 50 - rows.length);
-      const pseudoHTML = PSEUDO_POOL.slice(0, need).map(pseudoMemberCard).join("");
+      const pseudoHTML = PSEUDO_POOL.slice(0, need).map((u, i) => pseudoMemberCard(u, i)).join("");
       const intro = rows.length ? "" : `<div class="card empty" style="padding:20px 18px">
           <div class="big">🌱</div>
           <h2>Be the first real member</h2>
-          <p class="muted small" style="margin:8px 0 16px">Amoriva grows as people join. The cards below are <b>examples</b> that show how real members will appear here. Invite a friend to get the community started.</p>
+          <p class="muted small" style="margin:8px 0 16px">Amoriva grows as people join. The cards below are <b>examples</b> that show how real members will appear here — tap Message to try a demo chat. Invite a friend to get the community started.</p>
           <button class="btn btn-primary btn-sm" id="inviteBtn">📤 Invite friends</button>
         </div>`;
       list.innerHTML = intro + realHTML + pseudoHTML;
       const ib = $("#inviteBtn"); if (ib) ib.onclick = invite;
-      $$("#list .pseudo-msg").forEach((b) => b.onclick = () =>
-        toast("Example profile — real members appear here as people join. Invite a friend to grow Amoriva."));
       return;
     }
 
