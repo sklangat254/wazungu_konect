@@ -113,7 +113,7 @@
           <div class="lang-row"><b>Speaks:</b> ${esc((u.speaks || []).join(", "))}</div>
           <div class="lang-row"><b>Learning:</b> ${esc((u.learning || []).join(", "))}</div>
           ${(u.interests || []).length ? `<div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>` : ""}
-          <div class="actions"><a class="btn btn-primary btn-sm" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
+          <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
         </div>
       </div>`;
     }).join("");

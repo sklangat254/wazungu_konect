@@ -18,25 +18,8 @@
   </div>
 
   <div class="slides">
-    <!-- Slide: People Around the World (live) -->
+    <!-- Slide 1: Connect, Exchange & Discover -->
     <section class="slide on">
-      <div class="hero" style="margin-top:6px">
-        <h1>People Around the World</h1>
-        <p>A glimpse of the kind of members you'll meet. Sign up to chat with the real people inside.</p>
-      </div>
-      <div id="liveMembers"></div>
-      <div class="card" id="reviewCard">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-          <div id="reviewAvatar"></div>
-          <div style="flex:1"><div style="font-weight:800" id="reviewName"></div><div class="small" id="reviewStars" style="color:#f5a623"></div></div>
-        </div>
-        <p class="small muted" id="reviewBody" style="font-style:italic"></p>
-        <div class="tag hidden" id="reviewTag" style="margin-top:6px;background:var(--surface-2);color:var(--muted)">Example review</div>
-      </div>
-    </section>
-
-    <!-- Slide 1 -->
-    <section class="slide">
       <div class="card stack">
         <div class="feature">
           <div class="ic" style="background:#e3f6ea">💬</div>
@@ -54,6 +37,23 @@
       <div class="hero">
         <h1>Connect, Exchange &amp; Discover</h1>
         <p>A free community for language and culture exchange.</p>
+      </div>
+    </section>
+
+    <!-- Slide: People Around the World (example preview) -->
+    <section class="slide">
+      <div class="hero" style="margin-top:6px">
+        <h1>People Around the World</h1>
+        <p>A glimpse of the kind of members you'll meet. Sign up to chat with the real people inside.</p>
+      </div>
+      <div id="liveMembers"></div>
+      <div class="card" id="reviewCard" style="padding:13px 14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div id="reviewAvatar"></div>
+          <div style="flex:1"><div style="font-weight:800" id="reviewName"></div><div class="small" id="reviewStars" style="color:#f5a623"></div></div>
+        </div>
+        <p class="small muted" id="reviewBody" style="font-style:italic"></p>
+        <div class="tag hidden" id="reviewTag" style="margin-top:6px;background:var(--surface-2);color:var(--muted)">Example review</div>
       </div>
     </section>
 
@@ -115,17 +115,18 @@
   let pseudoTimer = null;
 
   function pseudoCard(p, typing) {
-    return `<div class="card member" style="margin-bottom:12px">
-      ${avatarHTML({ name: p.name, photo: p.img }, p.name, true)}
+    return `<div class="card member" style="padding:12px 14px;margin-bottom:8px;gap:11px;align-items:center">
+      <div style="transform:scale(.82);transform-origin:center">${avatarHTML({ name: p.name, photo: p.img }, p.name, true)}</div>
       <div class="info">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div class="name">${esc(p.name)} ${flag(p.country)}</div>
-          <span class="tag">${esc(countryName(p.country))}</span>
+          <div class="name" style="font-size:.96rem">${esc(p.name)} ${flag(p.country)}</div>
+          <span class="tag" style="font-size:.68rem;padding:2px 8px">${esc(countryName(p.country))}</span>
         </div>
-        ${typing ? TYPING : `<span class="status-text online">Online</span>`}
-        <span class="pill" style="margin-top:8px">💬 Looking to chat</span>
-        <p class="bio" style="font-style:italic;margin-top:6px">“${esc(p.msg)}”</p>
-        <div class="tag" style="margin-top:8px;background:var(--surface-2);color:var(--muted)">Example profile · not a real member</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px">
+          ${typing ? TYPING : `<span class="status-text online">Online</span>`}
+          <span class="pill" style="padding:2px 9px;font-size:.72rem">💬 Looking to chat</span>
+        </div>
+        <div class="tag" style="margin-top:5px;font-size:.66rem;padding:2px 8px;background:var(--surface-2);color:var(--muted)">Example profile · not a real member</div>
       </div></div>`;
   }
 
@@ -135,7 +136,7 @@
     const draw = () => {
       const t = Math.floor(Math.random() * PSEUDO.length);
       box.innerHTML = PSEUDO.map((p, idx) => pseudoCard(p, idx === t)).join("")
-        + `<p class="small center" style="color:#fff;opacity:.85;margin:2px 0 14px">A preview of who you'll meet. Sign up to see and chat with real members who are online now.</p>`;
+        + `<p class="small center" style="color:#fff;opacity:.85;margin:2px 0 10px">A preview of who you'll meet. Sign up to chat with real members online now.</p>`;
     };
     draw();
     if (!pseudoTimer) pseudoTimer = setInterval(draw, 2600);
