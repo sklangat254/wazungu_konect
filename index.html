@@ -112,21 +112,51 @@
     if (!showcaseLoaded) { showcaseLoaded = true; loadShowcase(); }
   });
 
+  const TYPING = `<span class="status-text typing">typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`;
+
+  // Clearly-labelled example profiles, shown only when no real member is online.
+  const PSEUDO = [
+    { name: "Amara", country: "NG", speaks: "English", learning: "Swahili" },
+    { name: "Lukas", country: "DE", speaks: "German", learning: "English" },
+    { name: "Mei",   country: "CN", speaks: "Chinese", learning: "English" },
+    { name: "Sofia", country: "BR", speaks: "Portuguese", learning: "Spanish" }
+  ];
+  let pseudoTimer = null;
+
+  function pseudoCard(p, typing) {
+    return `<div class="member">
+      ${avatarHTML({ name: p.name }, p.name)}
+      <div class="info">
+        <div class="name">${esc(p.name)} ${flag(p.country)}</div>
+        ${typing ? TYPING : `<span class="status-text online">Online now</span>`}
+        <div class="lang-row"><b>Speaks:</b> ${esc(p.speaks)} · <b>learning</b> ${esc(p.learning)}</div>
+        <div class="tag" style="margin-top:6px;background:var(--surface-2);color:var(--muted)">Example profile · not a real member</div>
+      </div></div>`;
+  }
+  function renderPseudo() {
+    const box = $("#liveMembers");
+    const draw = () => {
+      const t = Math.floor(Math.random() * PSEUDO.length);
+      box.innerHTML = PSEUDO.map((p, idx) => pseudoCard(p, idx === t)).join("")
+        + `<p class="small center" style="color:#fff;opacity:.8;margin-top:4px">Example profiles showing what Amoriva is like. Real members appear here as soon as they're online.</p>`;
+    };
+    draw();
+    if (!pseudoTimer) pseudoTimer = setInterval(draw, 2600);
+  }
+
   function loadShowcase() {
-    // Live online members (real presence)
+    // Live online members (real presence); example profiles only when nobody is online.
     ref("status").on("value", async (s) => {
       const online = [];
       s.forEach((c) => { const v = c.val(); if (v && v.state === "online") online.push({ uid: c.key, typing: v.typing === true }); });
-      $("#liveCount").textContent = online.length > 0 ? `${online.length} online now` : "A growing community";
-      const pick = online.slice(0, 4);
       const box = $("#liveMembers");
-      if (!pick.length) { box.innerHTML = `<p class="muted small center">Be one of the first to say hello — create your free account below.</p>`; return; }
+      const pick = online.slice(0, 4);
+      if (!pick.length) { $("#liveCount").textContent = "A growing community"; renderPseudo(); return; }
+
       const cards = await Promise.all(pick.map(async (o) => {
         const u = (await ref("users/" + o.uid).once("value")).val();
         if (!u || !u.profileComplete) return "";
-        const line = o.typing
-          ? `<span class="status-text typing">typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
-          : `<span class="status-text online">Online now</span>`;
+        const line = o.typing ? TYPING : `<span class="status-text online">Online now</span>`;
         const learn = (u.learning || [])[0], speak = (u.speaks || [])[0];
         return `<div class="member">
           ${avatarHTML(u, o.uid, true)}
@@ -137,7 +167,14 @@
           </div></div>`;
       }));
       const html = cards.filter(Boolean).join("");
-      box.innerHTML = html || `<p class="muted small center">Members are online — create your free account to meet them.</p>`;
+      if (html) {
+        clearInterval(pseudoTimer); pseudoTimer = null;
+        $("#liveCount").textContent = `${online.length} online now`;
+        box.innerHTML = html;
+      } else {
+        $("#liveCount").textContent = "A growing community";
+        renderPseudo();
+      }
     });
 
     // Latest real review (hidden until there is one)
