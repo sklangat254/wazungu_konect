@@ -6,6 +6,17 @@
 <meta name="theme-color" content="#0f172a">
 <title>Amoriva – Chat</title>
 <link rel="stylesheet" href="common.css">
+<style>
+  #lockBar { padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--border); }
+  .invite-cta { width: 100%; border: 0; cursor: pointer; border-radius: 18px; padding: 18px 20px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff;
+    box-shadow: 0 10px 26px rgba(124, 58, 237, .45); display: flex; flex-direction: column;
+    align-items: center; gap: 3px; transition: transform .12s, box-shadow .2s; }
+  .invite-cta:active { transform: scale(.98); box-shadow: 0 6px 16px rgba(124, 58, 237, .4); }
+  .invite-cta .ic { font-size: 1.9rem; line-height: 1; margin-bottom: 2px; }
+  .invite-cta .t { font-weight: 800; font-size: 1.08rem; }
+  .invite-cta .s { font-size: .82rem; opacity: .9; font-weight: 600; }
+</style>
 </head>
 <body>
 <div class="chat-page">
@@ -30,8 +41,12 @@
     <button class="btn btn-primary" id="sendBtn">Send</button>
   </div>
   <div class="notice hidden" id="blockedNote" style="margin:10px 12px"></div>
-  <div class="composer hidden" id="lockBar">
-    <button class="btn btn-primary" id="lockBtn">🔒 Invite a friend to unlock chatting</button>
+  <div class="hidden" id="lockBar">
+    <button class="invite-cta" id="lockBtn">
+      <span class="ic">🎁</span>
+      <span class="t">Invite a friend to unlock chatting</span>
+      <span class="s">Tap to get your invite code</span>
+    </button>
   </div>
 </div>
 
