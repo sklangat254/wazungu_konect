@@ -32,23 +32,24 @@
     font-size: .86rem; cursor: pointer; white-space: nowrap; box-shadow: 0 6px 16px rgba(239,68,68,.4); }
   .btn-red:active { transform: translateY(1px); }
 
-  .join-pop { position: fixed; left: 50%; transform: translateX(-50%) translateY(16px); bottom: calc(var(--nav-h, 64px) + 14px);
-    width: min(248px, 80vw); border-radius: 14px; box-shadow: 0 10px 26px rgba(22,163,74,.28);
+  .join-pop { position: fixed; left: 50%; transform: translateX(-50%) translateY(16px); bottom: calc(var(--nav-h, 64px) + 12px);
+    width: min(360px, 94vw); border-radius: 13px; box-shadow: 0 8px 22px rgba(22,163,74,.26);
     background: linear-gradient(135deg, #dcfce7, #f0fdf4); color: #14532d; border: 1px solid #86efac;
-    padding: 10px 12px 12px; z-index: 55; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
+    padding: 8px 14px; z-index: 55; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
   .join-pop.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .join-pop .jtitle { font-weight: 700; font-size: .66rem; letter-spacing: .6px; color: #16a34a; margin-bottom: 8px; }
+  .join-pop .jtitle { font-weight: 700; font-size: .62rem; letter-spacing: .6px; color: #16a34a; margin-bottom: 5px; }
   .join-pop .jrow { display: flex; align-items: center; gap: 10px; }
-  .join-pop .jface { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 1.15rem;
-    background: #bbf7d0; flex-shrink: 0; }
-  .join-pop .jname { font-weight: 600; font-size: .9rem; display: flex; align-items: center; gap: 5px; }
-  .join-pop .jnum { font-weight: 600; font-size: .9rem; color: #15803d; }
-  .join-pop .jex { font-size: .58rem; color: #166534; background: #bbf7d0; border-radius: 5px; padding: 1px 5px; }
-  .join-pop .jlang { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
-  .join-pop .jlang .jlabel { font-size: .72rem; color: #16a34a; font-weight: 700; }
+  .join-pop .jface { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 1.05rem;
+    background: #bbf7d0; flex-shrink: 0; overflow: hidden; }
+  .join-pop .jface img { width: 100%; height: 100%; object-fit: cover; }
+  .join-pop .jname { font-weight: 600; font-size: .88rem; display: inline-flex; align-items: center; gap: 5px; }
+  .join-pop .jnum { font-weight: 600; font-size: .82rem; color: #15803d; }
+  .join-pop .jex { font-size: .56rem; color: #166534; background: #bbf7d0; border-radius: 5px; padding: 1px 5px; }
+  .join-pop .jlang { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .join-pop .jlang .jlabel { font-size: .7rem; color: #16a34a; font-weight: 700; }
   .join-pop .jlang .jpill { display: inline-block; background: linear-gradient(135deg, #22c55e, #86efac); color: #fff;
-    border-radius: 999px; padding: 4px 14px; font-weight: 700; font-size: .78rem; }
-  .join-pop .jclose { position: absolute; top: 5px; right: 9px; background: none; border: none; color: #16a34a; font-size: 1rem; cursor: pointer; }
+    border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: .76rem; white-space: nowrap; }
+  .join-pop .jclose { position: absolute; top: 4px; right: 9px; background: none; border: none; color: #16a34a; font-size: 1rem; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -56,7 +57,8 @@
   <div class="topbar">
     <div class="brand"><div class="logo">💬</div>Amoriva</div>
     <div class="top-actions">
-      <span class="self-online" id="selfOnline"><span class="dot"></span>You · Online</span>
+      <span class="self-online" id="onlineCountPill" title="Members online now"><span class="dot"></span><span id="onlineCount">0</span></span>
+      <span class="self-online" id="selfOnline"><span class="dot"></span>You</span>
       <button class="bell" id="bellBtn" aria-label="Notifications">🔔<span class="badge" id="bellBadge">3</span></button>
     </div>
   </div>
@@ -77,7 +79,7 @@
 
   <div class="card">
     <h1>Find a language partner</h1>
-    <p class="muted small" style="margin-bottom:14px"><span id="onlineCount">● 0 online</span> · Tap <b>Message</b> to start a conversation.</p>
+    <p class="muted small" style="margin-bottom:14px">Real members, real-time status. Tap <b>Message</b> to start a conversation.</p>
     <input class="input" id="search" placeholder="Search by name, country, language or interest">
     <div class="scroll-x" id="filters" style="margin-top:12px">
       <button class="chip on" data-f="all">All</button>
@@ -101,8 +103,8 @@
       <div class="jname"><span id="joinName"></span><span id="joinFlag"></span><span class="jex hidden" id="joinEx">example</span></div>
       <div class="jnum" id="joinNum"></div>
     </div>
+    <div class="jlang"><span class="jlabel">lang</span><span class="jpill" id="joinLang"></span></div>
   </div>
-  <div class="jlang"><span class="jlabel">lang</span><span class="jpill" id="joinLang"></span></div>
 </div>
 
 <!-- Invite "how to" sheet -->
@@ -124,7 +126,7 @@
     </div>
     <div class="stack" style="margin-bottom:18px">
       <button class="btn btn-primary" id="shareCode">📤 Share invite</button>
-      <button class="btn btn-outline" id="copyCode">📋 Copy code</button>
+      <button class="btn btn-green" id="copyCode">📋 Copy code</button>
     </div>
     <label class="inv-label">Were you invited? Paste the code here</label>
     <div class="field" style="margin-top:0">
@@ -224,8 +226,8 @@
     pop._hide = setTimeout(() => pop.classList.remove("show"), 5000);
   }
   function startJoinPopups() {
-    setTimeout(showJoinPopup, 4000);          // first one shortly after landing
-    joinTimer = setInterval(showJoinPopup, 30000); // then every 30 seconds
+    setTimeout(showJoinPopup, 3000);         // first one shortly after landing
+    joinTimer = setInterval(showJoinPopup, 7000); // then every 7 seconds
   }
   $("#joinClose").onclick = () => $("#joinPop").classList.remove("show");
 
@@ -243,6 +245,8 @@
   // 50 real members, so a new user sees what a full community looks like. Each is tagged PSEUDO.
   // Some are "Online", some are "typing". The pool is built once so it stays stable across renders.
   const PSEUDO_FIRST = ["Amara","Lukas","Mei","Sofia","Diego","Aisha","Yuki","Noah","Priya","Omar","Lena","Tariq","Chloe","Ravi","Nadia","Ivan","Fatima","Kento","Elena","Mateo","Zara","Hassan","Lin","Bruno","Ingrid","Kwame","Sara","Jin","Marta","Youssef","Ana","Dmitri","Leila","Pablo","Hana","Samuel","Clara","Arjun","Nora","Felix","Maya","Tomas","Rania","Kofi","Isla","Viktor","Amina","Luca","Thandi","Jonas"];
+  // Gender per name (same order), so photos use fpseudoN.jpeg (female) / mpseudoN.jpeg (male).
+  const PSEUDO_GENDER = ["f","m","f","f","m","f","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m","f","m"];
   const PSEUDO_LOC = [["NG","English"],["DE","German"],["CN","Chinese"],["BR","Portuguese"],["MX","Spanish"],["EG","Arabic"],["JP","Japanese"],["US","English"],["IN","Hindi"],["SA","Arabic"],["SE","Swedish"],["FR","French"],["IT","Italian"],["RU","Russian"],["KE","Swahili"],["ZA","English"],["KR","Korean"],["TR","Turkish"],["ES","Spanish"],["PT","Portuguese"]];
   const PSEUDO_LEARN = ["English","Spanish","French","Swahili","Arabic","Japanese","German","Chinese","Portuguese","Italian"];
   const PSEUDO_INT = ["Music","Cooking","Travel","Football","Movies","Art","Dance","Food","Books","Photography","Hiking","Gaming"];
@@ -258,7 +262,7 @@
         country: loc[0], speaks: [speak], learning: [learn],
         interests: [PSEUDO_INT[k % PSEUDO_INT.length], PSEUDO_INT[(k + 5) % PSEUDO_INT.length]],
         bio: PSEUDO_BIO[k % PSEUDO_BIO.length],
-        photo: "pseudo" + (k + 1) + ".png",
+        photo: PSEUDO_GENDER[k % PSEUDO_GENDER.length] + "pseudo" + (k + 1) + ".jpeg",
         mode: (k % 3 === 1) ? "typing" : "online"
       });
     }
@@ -269,7 +273,7 @@
     const statusHTML = u.mode === "typing"
       ? `<span class="status-text typing">${esc(countryName(u.country))} · typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
       : `<span class="status-text online">${esc(countryName(u.country))} · Online now</span>`;
-    const demoHref = `chat.html?pseudo=${i}&pn=${encodeURIComponent(u.name)}&pc=${encodeURIComponent(u.country)}`;
+    const demoHref = `chat.html?pseudo=${i}&pn=${encodeURIComponent(u.name)}&pc=${encodeURIComponent(u.country)}&pp=${encodeURIComponent(u.photo)}`;
     return `<div class="card member">
       ${avatarHTML(u, u.name, true)}
       <div class="info">
@@ -301,8 +305,10 @@
         return { uid, u, online: isOnline(uid), canTeach, canHelp, score: canTeach.length * 2 + canHelp.length };
       });
 
-    const onlineTotal = rows.filter((r) => r.online).length;
-    $("#onlineCount").textContent = `● ${onlineTotal} online`;
+    const realOnline = rows.filter((r) => r.online).length;
+    // Online total shown = real online plus the example members that fill the dashboard up to 50.
+    const pseudoOnline = Math.max(0, 50 - realOnline);
+    $("#onlineCount").textContent = `${realOnline + pseudoOnline} (${pseudoOnline})`;
 
     if (filter === "online") rows = rows.filter((r) => r.online);
     if (filter === "teach") rows = rows.filter((r) => r.canTeach.length);
@@ -315,15 +321,15 @@
     const list = $("#list");
     const realHTML = rows.map(realMemberCardHTML).join("");
 
-    // Default view (no filter, no search): top up to 50 with clearly-labelled example members
-    // so a new user sees a full-looking community. Real members always come first.
-    if (filter === "all" && !q) {
+    // "All" and "Online now" views top up to 50 with clearly-labelled example members (all of
+    // which are active), so a new user sees a full, lively community. Real members come first.
+    if ((filter === "all" || filter === "online") && !q) {
       const need = Math.max(0, 50 - rows.length);
       const pseudoHTML = PSEUDO_POOL.slice(0, need).map((u, i) => pseudoMemberCard(u, i)).join("");
       const intro = rows.length ? "" : `<div class="card empty" style="padding:20px 18px">
           <div class="big">🌱</div>
           <h2>Be the first real member</h2>
-          <p class="muted small" style="margin:8px 0 16px">Amoriva grows as people join. The cards below are <b>examples</b> that show how real members will appear here — tap Message to try a demo chat. Invite a friend to get the community started.</p>
+          <p class="muted small" style="margin:8px 0 16px">Amoriva grows as people join. The cards below are <b>examples</b> that show how real members will appear here... tap Message to try a demo chat. Invite a friend to get the community started.</p>
           <button class="btn btn-primary btn-sm" id="inviteBtn">📤 Invite friends</button>
         </div>`;
       list.innerHTML = intro + realHTML + pseudoHTML;

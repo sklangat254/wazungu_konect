@@ -70,7 +70,7 @@
     </div>
     <div class="stack" style="margin-bottom:18px">
       <button class="btn btn-primary" id="shareCode">📤 Share invite</button>
-      <button class="btn btn-outline" id="copyCode">📋 Copy code</button>
+      <button class="btn btn-green" id="copyCode">📋 Copy code</button>
     </div>
     <label class="inv-label">Were you invited? Paste the code here</label>
     <div class="field" style="margin-top:0">
@@ -386,7 +386,7 @@
     const name = params.get("pn") || "Member";
     const country = params.get("pc") || "";
     const seed = parseInt(pseudoSeed, 10) || 0;
-    const photo = "pseudo" + (seed + 1) + ".png";
+    const photo = params.get("pp") || ("pseudo" + (seed + 1) + ".jpeg");
     other = { name, country, speaks: [], learning: [] };
 
     // Header

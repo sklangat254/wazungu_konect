@@ -84,24 +84,24 @@ const PSEUDO_TOPICS = [
 function pseudoChatScript(seed, name, country) {
   const land = countryName(country) || "another country";
   const intros = [
-    `Hi! 👋 I'm ${name} from ${land}. Great to meet you — I'd love to learn about your country!`,
-    `Hello from ${land}! 😊 I'm ${name}. I'm curious about where you're from — mind if I ask you a few things?`,
-    `Hey there! ${name} here, from ${land}. I enjoy meeting people worldwide — tell me about your home!`
+    `Hi! 👋 I'm ${name} from ${land}. So nice to meet you... I'd love to learn about your country!`,
+    `Hello from ${land}! 😊 I'm ${name}. I'm really curious about where you're from... mind if I ask you a few things?`,
+    `Hey there! ${name} here, from ${land}. I love meeting people worldwide... tell me about your home!`
   ];
   const phr = [
-    (t) => `First — what's ${t}?`,
+    (t) => `First... what's ${t}?`,
     (t) => `That's great! I'd also love to know about ${t}.`,
     (t) => `Interesting 😊 And ${t}?`,
-    (t) => `Thanks for sharing! How about ${t}?`,
+    (t) => `Thanks for sharing! So how about ${t}?`,
     (t) => `You're making me want to visit! What's ${t}?`,
-    (t) => `One more I'm curious about — ${t}?`
+    (t) => `One more thing I'm curious about... ${t}?`
   ];
   const lines = [intros[seed % intros.length]];
   for (let k = 0; k < phr.length; k++) {
     const t = PSEUDO_TOPICS[(seed + k) % PSEUDO_TOPICS.length];
     lines.push(phr[k](t));
   }
-  lines.push(`This has been lovely — thank you! 🌍 (Reminder: this is a demo chat with an example member. Invite a friend to start real conversations.)`);
+  lines.push(`This has been lovely... thank you! 🌍 (Just so you know, this is a demo chat with an example member. Invite a friend to start real conversations.)`);
   return lines;
 }
 
