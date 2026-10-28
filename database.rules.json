@@ -21,8 +21,7 @@
           "name": { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 40" },
           "bio": { ".validate": "newData.isString() && newData.val().length <= 200" },
           "country": { ".validate": "newData.isString() && newData.val().length === 2" },
-          "photo": { ".validate": "newData.isString() && newData.val().length <= 120000" },
-          "coins": { ".validate": "newData.isNumber() && ((!data.exists() && newData.val() <= 10) || newData.val() <= data.val())" }
+          "photo": { ".validate": "newData.isString() && newData.val().length <= 120000" }
         }
       },
 

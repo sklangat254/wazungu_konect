@@ -29,18 +29,6 @@
 
   <div class="card center" id="me"><div class="loader"></div></div>
 
-  <!-- coin wallet (own profile only) -->
-  <div class="card hidden" id="walletCard">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div><h2 style="margin:0">🪙 <span id="coinBal">–</span> coins</h2>
-        <p class="muted small" style="margin-top:4px">1 coin = 1 minute of video call. The person you call is free.</p></div>
-    </div>
-    <div class="stack" style="margin-top:14px">
-      <button class="btn btn-primary" id="buyBtn">Buy coins</button>
-      <button class="btn btn-outline" id="adBtn">🎬 Watch an ad for free coins</button>
-    </div>
-  </div>
-
   <!-- actions for my own profile -->
   <div class="card stack hidden" id="myActions">
     <a class="btn btn-primary" href="setup.html?edit=1">✏️ Edit profile</a>
@@ -93,15 +81,12 @@
     loadPosts(uid, p);
 
     if (isMe) {
-      $("#walletCard").classList.remove("hidden");
       $("#myActions").classList.remove("hidden");
       $("#deleteCard").classList.remove("hidden");
       $("#gridHead").textContent = "My posts";
       $("#themeBtn").onclick = toggleTheme;
       $("#logoutBtn").onclick = logout;
-      wireWallet();
       wireDelete();
-      if (location.hash === "#wallet") $("#walletCard").scrollIntoView({ behavior: "smooth" });
     } else {
       $("#otherActions").classList.remove("hidden");
       $("#gridHead").textContent = `${esc(p.name)}'s posts`;
@@ -162,13 +147,6 @@
       try { await ref("reports").push({ by: myUid, against: uid, reason: "Reported from profile", at: TS }); toast("Thanks — report sent."); }
       catch (e) { toast("Couldn't send report.", true); }
     };
-  }
-
-  function wireWallet() {
-    coinsRef(myUid).on("value", (s) => { $("#coinBal").textContent = s.val() || 0; });
-    $("#buyBtn").textContent = `Buy ${COINS.buyCoins} coins (${COINS.priceLabel})`;
-    $("#buyBtn").onclick = () => requestCoins("buy");
-    $("#adBtn").onclick = () => requestCoins("ad");
   }
 
   function wireDelete() {
