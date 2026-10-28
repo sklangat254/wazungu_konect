@@ -213,6 +213,13 @@ function timeAgo(ts) {
 function clock(ts) {
   return ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
 }
+
+// Points a user earns for each reply they send (real or demo), between 0.40 and 1.00.
+function randomPoints() { return Math.round((0.40 + Math.random() * 0.60) * 100) / 100; }
+function awardPoints(uid, amt) {
+  try { ref("users/" + uid + "/points").set(firebase.database.ServerValue.increment(amt)); } catch (e) {}
+}
+function fmtPoints(p) { return (Number(p) || 0).toFixed(2); }
 function statusLabel(st) {
   if (st && st.state === "online") return { text: "Online now", online: true };
   return { text: st && st.at ? "Last seen " + timeAgo(st.at) : "Offline", online: false };

@@ -78,8 +78,11 @@
   </div>
 
   <div class="card">
-    <h1>Find a language partner</h1>
-    <p class="muted small" style="margin-bottom:14px">Real members, real-time status. Tap <b>Message</b> to start a conversation.</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <h1 style="margin:0">Find a language partner</h1>
+      <span class="pts-chip" id="ptsChip" style="background:var(--primary-soft);color:var(--primary)">⭐ 0.00</span>
+    </div>
+    <p class="muted small" style="margin:8px 0 14px">Real members, real-time status. Tap <b>Message</b> to start a conversation. You earn points for every reply you send.</p>
     <input class="input" id="search" placeholder="Search by name, country, language or interest">
     <div class="scroll-x" id="filters" style="margin-top:12px">
       <button class="chip on" data-f="all">All</button>
@@ -157,6 +160,7 @@
     ref("blocks/" + myUid).on("value", (s) => { blocked = s.val() || {}; render(); });
     ref("users").orderByChild("lastSeen").limitToLast(300).on("value", (s) => { users = s.val() || {}; render(); });
     ref("status").on("value", (s) => { statuses = s.val() || {}; render(); });
+    ref("users/" + myUid + "/points").on("value", (s) => { const el = $("#ptsChip"); if (el) el.textContent = "⭐ " + fmtPoints(s.val()); });
 
     // Invite panel disappears once the member has invited a friend (or unlocked chatting).
     ref("users/" + myUid + "/hasInvited").on("value", (s) => {
@@ -262,7 +266,7 @@
         country: loc[0], speaks: [speak], learning: [learn],
         interests: [PSEUDO_INT[k % PSEUDO_INT.length], PSEUDO_INT[(k + 5) % PSEUDO_INT.length]],
         bio: PSEUDO_BIO[k % PSEUDO_BIO.length],
-        photo: PSEUDO_GENDER[k % PSEUDO_GENDER.length] + "pseudo" + (k + 1) + ".jpeg",
+        photo: "assets/" + PSEUDO_GENDER[k % PSEUDO_GENDER.length] + "pseudo" + (k + 1) + ".jpeg",
         mode: (k % 3 === 1) ? "typing" : "online"
       });
     }

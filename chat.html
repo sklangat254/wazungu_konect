@@ -27,6 +27,7 @@
       <div class="name" id="headName">…</div>
       <div class="status-text" id="headStatus"></div>
     </div>
+    <span class="pts-chip" id="ptsChip" title="Points earned">⭐ 0.00</span>
     <button class="icon-btn" id="callBtn" title="Video call" style="margin-right:6px">📹</button>
     <button class="icon-btn" id="menuBtn">⋯</button>
   </div>
@@ -147,6 +148,20 @@
     try { ref("users/" + myUid + "/hasInvited").set(true); } catch (e) {}
   }
 
+  // Points: every reply the user sends (real or demo) earns 0.40–1.00 points, accumulated.
+  function startPoints() {
+    ref("users/" + myUid + "/points").on("value", (s) => {
+      const el = $("#ptsChip"); if (el) el.textContent = "⭐ " + fmtPoints(s.val());
+    });
+  }
+  function awardReplyPoints() {
+    const amt = randomPoints();
+    awardPoints(myUid, amt);
+    const el = $("#ptsChip");
+    if (el) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+    toast("+" + amt.toFixed(2) + " points ⭐");
+  }
+
   if (pseudoMode) { initPseudoChat(); }
   else requireAuth().then(async ({ user, profile }) => {
     myUid = user.uid; me = profile;
@@ -157,6 +172,7 @@
     freeUsed = !!(me && me.freeMsgUsed === true);
     $("#myCode").value = "Amoriva" + myUid.slice(0, 6).toUpperCase();
     refreshComposer();
+    startPoints();
 
     const snap = await ref("users/" + otherUid).once("value");
     other = snap.val();
@@ -231,6 +247,7 @@
     $("#text").value = ""; autoGrow();
     setTyping(false);
     consumeFree();
+    awardReplyPoints();
 
     const key = ref("messages/" + cid).push().key;
     const preview = text.length > 80 ? text.slice(0, 80) + "…" : text;
@@ -383,10 +400,13 @@
   async function initPseudoChat() {
     const { user, profile } = await requireAuth();
     myUid = user.uid; me = profile;
+    invited = !!(me && (me.chatUnlocked === true || me.hasInvited === true));
+    freeUsed = !!(me && me.freeMsgUsed === true);
+    startPoints();
     const name = params.get("pn") || "Member";
     const country = params.get("pc") || "";
     const seed = parseInt(pseudoSeed, 10) || 0;
-    const photo = params.get("pp") || ("pseudo" + (seed + 1) + ".jpeg");
+    const photo = params.get("pp") || ("assets/pseudo" + (seed + 1) + ".jpeg");
     other = { name, country, speaks: [], learning: [] };
 
     // Header
@@ -451,6 +471,7 @@
       $("#text").value = ""; autoGrow();
       addPseudoMsg(text, true);
       consumeFree();
+      awardReplyPoints();
       botSay();                           // the demo member replies to what you said
     };
 
