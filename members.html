@@ -295,6 +295,7 @@
         <div class="lang-row"><b>Speaks:</b> ${esc(u.speaks.join(", "))}</div>
         <div class="lang-row"><b>Learning:</b> ${esc(u.learning.join(", "))}</div>
         <div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>
+        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn 0.40–1.00 pts per reply</span>
         <div class="tag" style="margin-top:8px;background:var(--surface-2);color:var(--muted)">Example profile · tap Message for a demo chat</div>
         <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="${demoHref}">💬 Message</a></div>
       </div>
@@ -382,6 +383,7 @@
         <div class="lang-row"><b>Speaks:</b> ${esc((u.speaks || []).join(", "))}</div>
         <div class="lang-row"><b>Learning:</b> ${esc((u.learning || []).join(", "))}</div>
         ${(u.interests || []).length ? `<div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>` : ""}
+        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn 0.40–1.00 pts per reply</span>
         <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
       </div>
     </div>`;

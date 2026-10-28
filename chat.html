@@ -415,11 +415,12 @@
     const headOnline = () => { const h = $("#headStatus"); h.className = "status-text online"; h.textContent = "Online · demo account"; };
     headOnline();
 
-    // Video call is enabled on demo accounts. If the user has already invited a friend, the
-    // demo member is shown as busy; otherwise the call nudges them to invite first.
+    // Video call is enabled on demo accounts: it opens the call screen (the user sees their own
+    // camera), then shows that the member is busy / has restricted video. Invite is required first.
     $("#callBtn").onclick = () => {
-      if (invited) { toast(name + " is currently on another call. Please try again later."); }
-      else { requestUnlock(); }
+      if (!invited) { requestUnlock(); return; }
+      location.href = "call.html?pseudo=" + encodeURIComponent(seed) +
+        "&pn=" + encodeURIComponent(name) + "&pc=" + encodeURIComponent(country) + "&pp=" + encodeURIComponent(photo);
     };
     $("#blockBtn").style.display = "none";
     $("#reportOpen").style.display = "none";
@@ -450,6 +451,18 @@
     let li = 0, awaiting = false;
     const botFirst = seed % 2 === 0;
 
+    // Demo chats are saved under the user's own node so they show in Chats and reload with history.
+    const pcRef = ref("pseudoChats/" + myUid + "/" + seed);
+    function savePseudoMsg(from, text) {
+      const preview = text.length > 80 ? text.slice(0, 80) + "…" : text;
+      const key = pcRef.child("msgs").push().key;
+      const updates = {};
+      updates["msgs/" + key] = { from, text, at: TS };
+      updates["last"] = preview; updates["lastFrom"] = from; updates["at"] = TS; updates["li"] = li;
+      updates["name"] = name; updates["country"] = country; updates["photo"] = photo;
+      pcRef.update(updates);
+    }
+
     function botSay() {
       if (li >= lines.length || awaiting) return;
       awaiting = true;
@@ -462,7 +475,8 @@
         h.innerHTML = `typing <span class="typing-dots"><span></span><span></span><span></span></span>`;
       }, 350);
       setTimeout(() => {
-        addPseudoMsg(lines[li++], false);
+        addPseudoMsg(line, false); li++;
+        savePseudoMsg("them", line);
         headOnline();
         awaiting = false;
       }, delay);
@@ -474,13 +488,23 @@
       if (!canSend()) return;             // one free message, then invite a friend
       $("#text").value = ""; autoGrow();
       addPseudoMsg(text, true);
+      savePseudoMsg("me", text);
       consumeFree();
       awardReplyPoints();
       botSay();                           // the demo member replies to what you said
     };
 
-    if (botFirst) setTimeout(botSay, 700); // this member greets first; you reply to continue
-    else setTimeout(() => $("#starters") && showStarters(), 700); // otherwise nudge you to start
+    // Load any saved history first; only greet fresh if there's nothing yet.
+    const existing = (await pcRef.once("value")).val();
+    if (existing && existing.msgs) {
+      Object.values(existing.msgs).sort((a, b) => (a.at || 0) - (b.at || 0))
+        .forEach((m) => addPseudoMsg(m.text, m.from === "me"));
+      li = existing.li || 0;
+    } else if (botFirst) {
+      setTimeout(botSay, 700);            // this member greets first; you reply to continue
+    } else {
+      setTimeout(() => $("#starters") && showStarters(), 700); // otherwise nudge you to start
+    }
   }
 </script>
 </body>

@@ -60,12 +60,15 @@
   const callId = params.get("id");
   const role = params.get("role"); // "caller" | "callee"
   const isCaller = role === "caller";
+  const pseudoSeed = params.get("pseudo");       // demo call with an example member
+  const isDemo = pseudoSeed !== null;
   let myUid, callRef, pc, localStream, remoteSet = false, pending = [], ended = false, peerUid = null, ringTimeout = null;
 
   const setStatus = (t) => { $("#statusPill").textContent = t; $("#ovMsg").textContent = t; };
   const showErr = (t) => { $("#ovErr").textContent = t; };
 
-  requireAuth().then(async ({ user, profile }) => {
+  if (isDemo) { initDemoCall(); }
+  else requireAuth().then(async ({ user, profile }) => {
     myUid = user.uid;
     if (!callId) { location.replace("members.html"); return; }
     callRef = ref("calls/" + callId);
@@ -190,6 +193,63 @@
   function leave() {
     const back = peerUid ? "chat.html?u=" + encodeURIComponent(peerUid) : "members.html";
     location.replace(back);
+  }
+
+  /* ---------- Demo call with an example (pseudo) member ---------- */
+  async function initDemoCall() {
+    const name = params.get("pn") || "Member";
+    const country = params.get("pc") || "";
+    const photo = params.get("pp") || "";
+    const back = "chat.html?pseudo=" + encodeURIComponent(pseudoSeed) +
+      "&pn=" + encodeURIComponent(name) + "&pc=" + encodeURIComponent(country) + "&pp=" + encodeURIComponent(photo);
+    peerUid = null;
+
+    $("#ovName").textContent = name + " " + flag(country);
+    if (photo) {
+      $("#ovAv").innerHTML = `<img src="${esc(photo)}" alt="" onerror="this.remove()" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else {
+      $("#ovAv").textContent = (name[0] || "?").toUpperCase();
+    }
+    setStatus("Ringing…");
+
+    // Show the user their own camera (this is a real local preview).
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      $("#local").srcObject = localStream;
+    } catch (e) {
+      showErr("Camera/microphone blocked. Allow access in your browser settings to use video calls.");
+      setStatus("No camera access");
+    }
+
+    // After a realistic ring, the demo member can't actually answer, so we show a believable reason.
+    setTimeout(() => setStatus("Connecting…"), 2500);
+    setTimeout(() => {
+      const reasons = [
+        name + " is currently on another call.",
+        name + " has restricted video calls.",
+        name + " isn't available for video right now."
+      ];
+      const msg = reasons[Math.floor(Math.random() * reasons.length)];
+      setStatus("Call ended");
+      $("#ovMsg").textContent = msg;
+      $("#overlay").classList.remove("hidden");
+    }, 5000);
+
+    // Return to the chat a moment later.
+    setTimeout(() => { endLocalDemo(); location.replace(back); }, 8000);
+
+    $("#endBtn").onclick = () => { endLocalDemo(); location.replace(back); };
+    $("#micBtn").onclick = () => {
+      micOn = !micOn; localStream && localStream.getAudioTracks().forEach((t) => t.enabled = micOn);
+      $("#micBtn").classList.toggle("off", !micOn); $("#micBtn").textContent = micOn ? "🎙️" : "🔇";
+    };
+    $("#camBtn").onclick = () => {
+      camOn = !camOn; localStream && localStream.getVideoTracks().forEach((t) => t.enabled = camOn);
+      $("#camBtn").classList.toggle("off", !camOn); $("#camBtn").textContent = camOn ? "📷" : "🚫";
+    };
+  }
+  function endLocalDemo() {
+    try { localStream && localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
   }
 
   window.addEventListener("beforeunload", () => { try { callRef && callRef.child("status").set("ended"); } catch (e) {} });

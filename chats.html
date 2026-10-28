@@ -22,7 +22,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="common.js"></script>
 <script>
-  let myUid, chats = [], profiles = {}, statuses = {}, watching = {};
+  let myUid, chats = [], pseudoChats = [], profiles = {}, statuses = {}, watching = {};
 
   requireAuth().then(({ user }) => {
     myUid = user.uid;
@@ -36,6 +36,13 @@
       chats.forEach((c) => watchUser(c.with));
       render();
     });
+
+    // Demo (pseudo) chats the user has started — stored under their own node.
+    ref("pseudoChats/" + myUid).orderByChild("at").on("value", (s) => {
+      pseudoChats = [];
+      s.forEach((c) => { pseudoChats.push({ seed: c.key, ...c.val() }); });
+      render();
+    });
   });
 
   function watchUser(uid) {
@@ -47,26 +54,42 @@
 
   function render() {
     const box = $("#box");
-    if (!chats.length) {
-      box.innerHTML = `<div class="empty"><div class="big">💬</div><h2>No conversations yet</h2>
-        <p class="muted small" style="margin:8px 0 16px">Find someone who speaks the language you're learning and say hello.</p>
-        <a class="btn btn-primary btn-sm" href="members.html">🌍 Browse members</a></div>`;
-      return;
-    }
-    box.innerHTML = chats.map((c) => {
+
+    const realRows = chats.map((c) => {
       const p = profiles[c.with] || { name: "…" };
       const online = statuses[c.with] && statuses[c.with].state === "online";
       const mine = c.lastFrom === myUid ? "You: " : "";
-      return `<div class="row" data-u="${esc(c.with)}">
+      return { at: c.at || 0, href: "chat.html?u=" + encodeURIComponent(c.with), html: `
         ${avatarHTML(p, c.with, online)}
         <div class="info">
           <div style="font-weight:800">${esc(p.name)} ${flag(p.country)}</div>
           <div class="last">${esc(mine + (c.last || ""))}</div>
         </div>
-        <div class="meta">${timeAgo(c.at)}${c.unread ? `<br><span class="badge">${c.unread}</span>` : ""}</div>
-      </div>`;
-    }).join("");
-    $$(".row", box).forEach((r) => r.onclick = () => location.href = "chat.html?u=" + encodeURIComponent(r.dataset.u));
+        <div class="meta">${timeAgo(c.at)}${c.unread ? `<br><span class="badge">${c.unread}</span>` : ""}</div>` };
+    });
+
+    const pseudoRows = pseudoChats.map((c) => {
+      const mine = c.lastFrom === "me" ? "You: " : "";
+      const href = "chat.html?pseudo=" + encodeURIComponent(c.seed) +
+        "&pn=" + encodeURIComponent(c.name || "") + "&pc=" + encodeURIComponent(c.country || "") + "&pp=" + encodeURIComponent(c.photo || "");
+      return { at: c.at || 0, href, html: `
+        ${avatarHTML({ name: c.name, photo: c.photo }, c.name, true)}
+        <div class="info">
+          <div style="font-weight:800">${esc(c.name || "Member")} ${flag(c.country)} <span class="tag" style="background:#fde68a;color:#92400e;font-weight:800;font-size:.62rem">PSEUDO</span></div>
+          <div class="last">${esc(mine + (c.last || ""))}</div>
+        </div>
+        <div class="meta">${timeAgo(c.at)}</div>` };
+    });
+
+    const all = realRows.concat(pseudoRows).sort((a, b) => b.at - a.at);
+    if (!all.length) {
+      box.innerHTML = `<div class="empty"><div class="big">💬</div><h2>No conversations yet</h2>
+        <p class="muted small" style="margin:8px 0 16px">Find someone who speaks the language you're learning and say hello.</p>
+        <a class="btn btn-primary btn-sm" href="members.html">🌍 Browse members</a></div>`;
+      return;
+    }
+    box.innerHTML = all.map((r) => `<div class="row" data-href="${esc(r.href)}">${r.html}</div>`).join("");
+    $$(".row", box).forEach((r) => r.onclick = () => location.href = r.dataset.href);
   }
 </script>
 </body>
