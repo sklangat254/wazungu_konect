@@ -32,23 +32,23 @@
     font-size: .86rem; cursor: pointer; white-space: nowrap; box-shadow: 0 6px 16px rgba(239,68,68,.4); }
   .btn-red:active { transform: translateY(1px); }
 
-  .join-pop { position: fixed; left: 50%; transform: translateX(-50%) translateY(20px); bottom: calc(var(--nav-h, 64px) + 14px);
-    width: min(320px, 90vw); background: var(--surface); color: var(--text); border-radius: 16px; box-shadow: 0 12px 34px rgba(0,0,0,.28);
-    padding: 14px 16px 16px; z-index: 55; opacity: 0; pointer-events: none; transition: opacity .35s, transform .35s; }
+  .join-pop { position: fixed; left: 50%; transform: translateX(-50%) translateY(16px); bottom: calc(var(--nav-h, 64px) + 14px);
+    width: min(248px, 80vw); border-radius: 14px; box-shadow: 0 10px 26px rgba(22,163,74,.28);
+    background: linear-gradient(135deg, #dcfce7, #f0fdf4); color: #14532d; border: 1px solid #86efac;
+    padding: 10px 12px 12px; z-index: 55; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
   .join-pop.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .join-pop .jtitle { font-weight: 800; font-size: .82rem; letter-spacing: .3px; color: var(--primary); margin-bottom: 10px; }
-  .join-pop .jrow { display: flex; align-items: center; gap: 12px; }
-  .join-pop .jface { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; font-size: 1.6rem;
-    background: var(--primary-soft); position: relative; flex-shrink: 0; }
-  .join-pop .jface .jflag { position: absolute; right: -2px; bottom: -2px; font-size: 1rem; background: var(--surface); border-radius: 50%; }
-  .join-pop .jname { font-weight: 800; font-size: 1rem; }
-  .join-pop .jnum { font-weight: 800; font-size: 1.15rem; }
-  .join-pop .jex { font-size: .62rem; color: var(--muted); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; margin-left: 6px; }
-  .join-pop .jlang { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-  .join-pop .jlang .jlabel { font-size: .78rem; color: var(--muted); font-weight: 700; }
-  .join-pop .jlang .jpill { flex: 1; text-align: center; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff;
-    border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: .9rem; }
-  .join-pop .jclose { position: absolute; top: 8px; right: 12px; background: none; border: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
+  .join-pop .jtitle { font-weight: 700; font-size: .66rem; letter-spacing: .6px; color: #16a34a; margin-bottom: 8px; }
+  .join-pop .jrow { display: flex; align-items: center; gap: 10px; }
+  .join-pop .jface { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 1.15rem;
+    background: #bbf7d0; flex-shrink: 0; }
+  .join-pop .jname { font-weight: 600; font-size: .9rem; display: flex; align-items: center; gap: 5px; }
+  .join-pop .jnum { font-weight: 600; font-size: .9rem; color: #15803d; }
+  .join-pop .jex { font-size: .58rem; color: #166534; background: #bbf7d0; border-radius: 5px; padding: 1px 5px; }
+  .join-pop .jlang { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+  .join-pop .jlang .jlabel { font-size: .72rem; color: #16a34a; font-weight: 700; }
+  .join-pop .jlang .jpill { display: inline-block; background: linear-gradient(135deg, #22c55e, #86efac); color: #fff;
+    border-radius: 999px; padding: 4px 14px; font-weight: 700; font-size: .78rem; }
+  .join-pop .jclose { position: absolute; top: 5px; right: 9px; background: none; border: none; color: #16a34a; font-size: 1rem; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -96,9 +96,9 @@
   <button class="jclose" id="joinClose" aria-label="Close">×</button>
   <div class="jtitle">ACTIVE MEMBER</div>
   <div class="jrow">
-    <div class="jface"><span id="joinEmoji">😊</span><span class="jflag" id="joinFlag"></span></div>
+    <div class="jface">😊</div>
     <div style="flex:1;min-width:0">
-      <div class="jname"><span id="joinName"></span><span class="jex hidden" id="joinEx">example</span></div>
+      <div class="jname"><span id="joinName"></span><span id="joinFlag"></span><span class="jex hidden" id="joinEx">example</span></div>
       <div class="jnum" id="joinNum"></div>
     </div>
   </div>
@@ -122,9 +122,16 @@
     <div class="code-display">
       <input class="input" id="myCode" readonly>
     </div>
-    <div class="stack">
+    <div class="stack" style="margin-bottom:18px">
       <button class="btn btn-primary" id="shareCode">📤 Share invite</button>
       <button class="btn btn-outline" id="copyCode">📋 Copy code</button>
+    </div>
+    <label class="inv-label">Were you invited? Paste the code here</label>
+    <div class="field" style="margin-top:0">
+      <textarea class="input code-paste" id="inviteInput" placeholder="Paste your friend's Amoriva code here…"></textarea>
+    </div>
+    <div class="stack">
+      <button class="btn btn-primary" id="unlockBtn">✅ Unlock chat</button>
       <button class="btn btn-outline" data-close>Close</button>
     </div>
   </div>
@@ -176,11 +183,19 @@
     $("#invitePanel").classList.add("hidden");
     try { await ref("users/" + myUid + "/hasInvited").set(true); } catch (e) {}
   }
-  $("#copyCode").onclick = () => { navigator.clipboard?.writeText($("#myCode").value); toast("Code copied"); markInvited(); };
+  $("#copyCode").onclick = () => { navigator.clipboard?.writeText($("#myCode").value); toast("Code copied — share it with a friend!"); markInvited(); };
   $("#shareCode").onclick = () => {
     const data = { title: "Amoriva", text: `Join me on Amoriva! Use my invite code: ${$("#myCode").value}`, url: location.origin + "/index.html" };
     if (navigator.share) navigator.share(data).then(markInvited).catch(() => {});
     else { navigator.clipboard?.writeText(data.text + " " + data.url); toast("Invite copied"); markInvited(); }
+  };
+  $("#unlockBtn").onclick = async () => {
+    const v = ($("#inviteInput").value || "").trim();
+    if (!/amoriva/i.test(v)) { toast("That code isn't valid.", true); return; }
+    try { await ref("users/" + myUid + "/chatUnlocked").set(true); } catch (e) {}
+    try { await ref("users/" + myUid + "/hasInvited").set(true); } catch (e) {}
+    closeSheet();
+    toast("Unlocked — chat as much as you like!");
   };
 
   // ----- "Active Member" welcome popups -----
@@ -243,6 +258,7 @@
         country: loc[0], speaks: [speak], learning: [learn],
         interests: [PSEUDO_INT[k % PSEUDO_INT.length], PSEUDO_INT[(k + 5) % PSEUDO_INT.length]],
         bio: PSEUDO_BIO[k % PSEUDO_BIO.length],
+        photo: "pseudo" + (k + 1) + ".png",
         mode: (k % 3 === 1) ? "typing" : "online"
       });
     }

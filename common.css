@@ -181,11 +181,15 @@ textarea.input { resize: vertical; min-height: 90px; }
 .inv-step { display: flex; align-items: center; gap: 11px; font-size: .92rem; font-weight: 600; color: var(--text); }
 .inv-step .sn { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); color: var(--primary);
   display: grid; place-items: center; font-weight: 800; flex-shrink: 0; font-size: .95rem; }
-.inv-label { display: block; font-weight: 800; font-size: .82rem; color: var(--muted); margin: 2px 0 7px; }
+.inv-label { display: block; font-weight: 800; font-size: .82rem; color: var(--text); margin: 2px 0 7px; }
 .code-display { display: flex; gap: 8px; align-items: stretch; margin-bottom: 18px; }
-.code-display .input { flex: 1; font-weight: 800; letter-spacing: 1.5px; text-align: center; font-size: 1.1rem;
-  background: var(--primary-soft); color: var(--primary); border-color: transparent; }
-textarea.code-paste { width: 100%; min-height: 76px; resize: vertical; line-height: 1.4; }
+.code-display .input { flex: 1; font-weight: 800; letter-spacing: 1.5px; text-align: center; font-size: 1.15rem;
+  background: #fff; color: #4f46e5; border: 2px solid #7c3aed; }
+:root[data-theme="dark"] .code-display .input { background: #1e1b2e; color: #c4b5fd; }
+textarea.code-paste { width: 100%; min-height: 80px; resize: vertical; line-height: 1.4;
+  background: var(--surface); color: var(--text); border: 2px solid var(--primary); }
+textarea.code-paste::placeholder { color: var(--muted); }
+.code-paste:focus, .code-display .input:focus { box-shadow: 0 0 0 3px rgba(124,58,237,.2); }
 
 /* Onboarding */
 .slides { position: relative; overflow: hidden; }

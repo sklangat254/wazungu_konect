@@ -132,11 +132,14 @@ function colorFor(str) {
   return `hsl(${h}, 55%, 45%)`;
 }
 function avatarHTML(user, uid, online, size = "") {
-  const inner = user && user.photo
-    ? `<img src="${esc(user.photo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
-    : esc(initials(user && user.name));
+  // Initials always render underneath; a photo (if any) overlays them and, if it fails to load
+  // (e.g. a missing pseudoN.png), removes itself so the initials show instead of a broken icon.
+  const ini = esc(initials(user && user.name));
+  const img = user && user.photo
+    ? `<img src="${esc(user.photo)}" alt="" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    : "";
   return `<div class="avatar ${size}" style="background:${colorFor(uid || (user && user.name))}">
-    ${inner}${online === undefined ? "" : `<span class="dot ${online ? "online" : ""}"></span>`}
+    <span>${ini}</span>${img}${online === undefined ? "" : `<span class="dot ${online ? "online" : ""}"></span>`}
   </div>`;
 }
 

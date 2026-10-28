@@ -386,11 +386,12 @@
     const name = params.get("pn") || "Member";
     const country = params.get("pc") || "";
     const seed = parseInt(pseudoSeed, 10) || 0;
+    const photo = "pseudo" + (seed + 1) + ".png";
     other = { name, country, speaks: [], learning: [] };
 
     // Header
     $("#headName").innerHTML = `${esc(name)} ${flag(country)}`;
-    $("#headAvatar").innerHTML = avatarHTML({ name }, name, true);
+    $("#headAvatar").innerHTML = avatarHTML({ name, photo }, name, true);
     const headOnline = () => { const h = $("#headStatus"); h.className = "status-text online"; h.textContent = "Online · demo account"; };
     headOnline();
 
@@ -399,7 +400,7 @@
     $("#blockBtn").style.display = "none";
     $("#reportOpen").style.display = "none";
     $("#profileView").innerHTML = `<div class="member" style="margin-bottom:6px">
-      ${avatarHTML({ name }, name, true)}
+      ${avatarHTML({ name, photo }, name, true)}
       <div class="info">
         <div class="name">${esc(name)} ${flag(country)} <span class="tag" style="background:#fde68a;color:#92400e;font-weight:800">PSEUDO</span></div>
         <div class="status-text">${esc(countryName(country))} · example member</div>
