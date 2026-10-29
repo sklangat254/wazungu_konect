@@ -33,8 +33,25 @@
       <h1>Where you're from &amp; your languages</h1>
       <p class="muted small" style="margin-bottom:18px">This helps us show you good language partners.</p>
       <div class="field">
-        <label for="country">Country</label>
+        <label for="country">Home country</label>
         <select class="input" id="country"></select>
+      </div>
+      <div class="field">
+        <label for="currentCountry">Country you're currently in</label>
+        <select class="input" id="currentCountry"></select>
+      </div>
+      <div class="field">
+        <label for="reason">Why are you there?</label>
+        <select class="input" id="reason">
+          <option value="">Select a reason</option>
+          <option>Work / job</option>
+          <option>Business</option>
+          <option>Studying</option>
+          <option>Tourism</option>
+          <option>Living here</option>
+          <option>Visiting family</option>
+          <option>Other</option>
+        </select>
       </div>
       <div class="field">
         <label>Languages you speak well</label>
@@ -111,6 +128,12 @@
       COUNTRIES.map(([c, n]) => `<option value="${c}">${flag(c)} ${n}</option>`).join("");
     sel.value = profile.country || guessCountry();
 
+    const cur = $("#currentCountry");
+    cur.innerHTML = `<option value="">Select country</option>` +
+      COUNTRIES.map(([c, n]) => `<option value="${c}">${flag(c)} ${n}</option>`).join("");
+    cur.value = profile.currentCountry || profile.country || guessCountry();
+    $("#reason").value = profile.reason || "";
+
     getSpeaks = chipPicker($("#speaks"), LANGUAGES, profile.speaks || [], 5);
     getLearning = chipPicker($("#learning"), LANGUAGES, profile.learning || [], 5);
     getInterests = chipPicker($("#interests"), INTERESTS, profile.interests || [], 5);
@@ -175,6 +198,8 @@
         name,
         photo: photoData,
         country: $("#country").value,
+        currentCountry: $("#currentCountry").value,
+        reason: $("#reason").value,
         speaks: getSpeaks(),
         learning: getLearning(),
         interests: getInterests(),

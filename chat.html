@@ -126,26 +126,32 @@
   const otherUid = params.get("u");
   const pseudoSeed = params.get("pseudo");
   const pseudoMode = pseudoSeed !== null;
-  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, invited = false, freeUsed = false, lastDay = "", lastSend = 0, msgCount = 0;
+  const hubMode = params.get("hub") === "1"; // Nairobi Expat Hub: needs a SEPARATE friend invite.
+  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, invited = false, freeUsed = false, hubUnlocked = false, lastDay = "", lastSend = 0, msgCount = 0;
   let pseudoSend = () => {};
   function requestUnlock() { open("inviteSheet"); }
 
-  // A user gets ONE free message (in any chat, real or demo). The next message asks them to
-  // invite a friend first — a light nudge that grows the community without demanding much upfront.
+  // Normal chats: one free message, then invite a friend. Expat-hub chats: a separate friend
+  // invite is required up front (invite a DIFFERENT friend than the one for normal chats).
   function canSend() {
+    if (hubMode) { if (hubUnlocked) return true; requestUnlock(); return false; }
     if (invited) return true;
     if (!freeUsed) return true;
     requestUnlock();
     return false;
   }
   function consumeFree() {
-    if (invited || freeUsed) return;
+    if (hubMode || invited || freeUsed) return;
     freeUsed = true;
     try { ref("users/" + myUid + "/freeMsgUsed").set(true); } catch (e) {}
   }
   function markInvited() {
     invited = true;
     try { ref("users/" + myUid + "/hasInvited").set(true); } catch (e) {}
+  }
+  function markUnlock() {
+    if (hubMode) { hubUnlocked = true; try { ref("users/" + myUid + "/hubUnlocked").set(true); } catch (e) {} }
+    else markInvited();
   }
 
   // Points: every reply the user sends (real or demo) earns 0.40–1.00 points, accumulated.
@@ -170,6 +176,8 @@
 
     invited = !!(me && (me.chatUnlocked === true || me.hasInvited === true));
     freeUsed = !!(me && me.freeMsgUsed === true);
+    hubUnlocked = !!(me && me.hubUnlocked === true);
+    if (hubMode) applyHubInviteText();
     $("#myCode").value = "Amoriva" + myUid.slice(0, 6).toUpperCase();
     refreshComposer();
     startPoints();
@@ -349,20 +357,31 @@
   $$(".sheet-bg").forEach((bg) => bg.onclick = (e) => { if (e.target === bg && Date.now() > sheetGuardUntil) closeAll(); });
 
   // Invite / unlock
+  function applyHubInviteText() {
+    const h = $("#inviteSheet .invite-hero h3"); if (h) h.textContent = "Invite a different friend";
+    const p = $("#inviteSheet .invite-hero p"); if (p) p.textContent = "The Nairobi Expat Hub needs a separate invite — bring a different friend to unlock it.";
+  }
   $("#lockBtn").onclick = () => open("inviteSheet");
   $("#copyCode").onclick = () => {
     navigator.clipboard?.writeText($("#myCode").value);
     toast("Code copied — share it with a friend!");
-    markInvited(); closeAll();
+    markUnlock(); closeAll();
   };
   $("#shareCode").onclick = () => {
     const data = { title: "Amoriva", text: `Join me on Amoriva! Use my invite code: ${$("#myCode").value}`, url: location.origin + "/index.html" };
-    if (navigator.share) navigator.share(data).then(() => { markInvited(); closeAll(); }).catch(() => {});
-    else { navigator.clipboard?.writeText(data.text + " " + data.url); toast("Invite copied"); markInvited(); closeAll(); }
+    if (navigator.share) navigator.share(data).then(() => { markUnlock(); closeAll(); }).catch(() => {});
+    else { navigator.clipboard?.writeText(data.text + " " + data.url); toast("Invite copied"); markUnlock(); closeAll(); }
   };
   $("#unlockBtn").onclick = async () => {
     const v = ($("#inviteInput").value || "").trim();
     if (!/amoriva/i.test(v)) { toast("That code isn't valid.", true); return; }
+    if (hubMode) {
+      try { await ref("users/" + myUid + "/hubUnlocked").set(true); } catch (e) {}
+      hubUnlocked = true;
+      closeAll();
+      toast("Expat Hub unlocked — enjoy chatting!");
+      return;
+    }
     try { await ref("users/" + myUid + "/chatUnlocked").set(true); } catch (e) {}
     invited = true;
     closeAll();
@@ -402,6 +421,8 @@
     myUid = user.uid; me = profile;
     invited = !!(me && (me.chatUnlocked === true || me.hasInvited === true));
     freeUsed = !!(me && me.freeMsgUsed === true);
+    hubUnlocked = !!(me && me.hubUnlocked === true);
+    if (hubMode) applyHubInviteText();
     startPoints();
     const name = params.get("pn") || "Member";
     const country = params.get("pc") || "";
@@ -418,8 +439,8 @@
     // Video call is enabled on demo accounts: it opens the call screen (the user sees their own
     // camera), then shows that the member is busy / has restricted video. Invite is required first.
     $("#callBtn").onclick = () => {
-      if (!invited) { requestUnlock(); return; }
-      location.href = "call.html?pseudo=" + encodeURIComponent(seed) +
+      if (hubMode ? !hubUnlocked : !invited) { requestUnlock(); return; }
+      location.href = "call.html?pseudo=" + encodeURIComponent(seed) + (hubMode ? "&hub=1" : "") +
         "&pn=" + encodeURIComponent(name) + "&pc=" + encodeURIComponent(country) + "&pp=" + encodeURIComponent(photo);
     };
     $("#blockBtn").style.display = "none";

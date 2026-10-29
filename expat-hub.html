@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Amoriva – Nairobi Expat Hub</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .hub-head { background: linear-gradient(135deg, #0e7490, #15803d); color: #fff; border-radius: var(--radius);
+    padding: 18px 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .hub-head h1 { margin: 6px 0 6px; font-size: 1.25rem; }
+  .hub-head p { font-size: .86rem; opacity: .95; margin: 0; }
+  .dual { display: inline-flex; gap: 2px; background: rgba(255,255,255,.18); border-radius: 999px; padding: 3px 10px; font-size: .9rem; }
+  .base { font-size: .78rem; color: var(--muted); font-weight: 700; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="app has-nav">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div>Expat Hub</div>
+    <a class="icon-btn" href="members.html">← Back</a>
+  </div>
+
+  <div class="hub-head">
+    <span class="dual">🇰🇪 + 🇺🇸 🇨🇦 🇬🇧 🇦🇺</span>
+    <h1>USA, Canada, UK &amp; Australia — Based in Nairobi</h1>
+    <p>International members from the USA, Canada, UK and Australia around Nairobi — Westlands, Karen, Gigiri, Kilimani, Lavington. Each profile shows dual flags (Kenya + origin) and their Nairobi base.</p>
+  </div>
+
+  <div class="card" style="border:1px dashed var(--border)">
+    <p class="small" style="margin:0"><b>Heads up:</b> these are clearly-labelled <b>example (pseudo)</b> profiles that preview how the hub will look. Tap <b>Message</b> to try a demo chat. To chat here you'll invite a <b>different</b> friend than the one for your normal chats.</p>
+  </div>
+
+  <div id="list"><div class="card"><div class="loader"></div></div></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="common.js"></script>
+<script>
+  requireAuth().then(() => { renderNav("members"); renderList(); });
+
+  // Example expat accounts use photo slots 40..56 (they exist in assets/).
+  // Gender of each slot, so the file name and name/pronoun line up.
+  const SLOT_GENDER = { 40:"m",41:"m",42:"m",43:"m",44:"m",45:"m",46:"f",47:"f",48:"m",49:"f",50:"f",51:"f",52:"m",53:"m",54:"m",55:"m",56:"m" };
+  const ORIGINS = [["US","American"],["CA","Canadian"],["GB","British"],["AU","Australian"]];
+  const MALE = ["James","Daniel","Michael","Ryan","Thomas","Oliver","Ethan","Jack","Liam","Noah","Lucas","Henry","Samuel"];
+  const FEMALE = ["Emily","Sophie","Grace","Chloe","Hannah","Olivia","Ava","Mia"];
+  const AREAS = ["Westlands","Karen","Gigiri","Kilimani","Lavington","Runda","Parklands","Spring Valley"];
+  const REASONS = ["Work", "Business", "UN / NGO work", "Teaching", "Research", "Consulting"];
+
+  function card(a) {
+    const statusHTML = a.mode === "typing"
+      ? `<span class="status-text typing">Nairobi · typing <span class="typing-dots"><span></span><span></span><span></span></span></span>`
+      : `<span class="status-text online">Nairobi · Online now</span>`;
+    const href = `chat.html?pseudo=${a.idx}&hub=1&pn=${encodeURIComponent(a.name)}&pc=${encodeURIComponent(a.origin)}&pp=${encodeURIComponent(a.photo)}`;
+    return `<div class="card member">
+      ${avatarHTML({ name: a.name, photo: a.photo }, a.name, true)}
+      <div class="info">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="name">${esc(a.name)} ${flag(a.origin)}+${flag("KE")}</div>
+          <span class="tag" style="background:#fde68a;color:#92400e;font-weight:800">PSEUDO</span>
+        </div>
+        ${statusHTML}
+        <div class="base">📍 Based in ${esc(a.area)}, Nairobi · ${esc(a.reason)}</div>
+        <p class="bio">${esc(a.originLabel)} national, currently in Nairobi (${esc(a.reason).toLowerCase()}). Happy to chat about life in Kenya and back home.</p>
+        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn 0.40–1.00 pts per reply</span>
+        <div class="tag" style="margin-top:8px;background:var(--surface-2);color:var(--muted)">Example profile · tap Message for a demo chat</div>
+        <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="${href}">💬 Message</a></div>
+      </div>
+    </div>`;
+  }
+
+  function renderList() {
+    const accounts = [];
+    let fi = 0, mi = 0, n = 0;
+    for (let s = 40; s <= 56; s++) {
+      const g = SLOT_GENDER[s];
+      const origin = ORIGINS[n % ORIGINS.length];
+      accounts.push({
+        idx: s - 1,
+        photo: "assets/" + g + "pseudo" + s + ".jpeg",
+        name: g === "f" ? FEMALE[fi++ % FEMALE.length] : MALE[mi++ % MALE.length],
+        origin: origin[0], originLabel: origin[1],
+        area: AREAS[n % AREAS.length],
+        reason: REASONS[n % REASONS.length],
+        mode: (n % 3 === 1) ? "typing" : "online"
+      });
+      n++;
+    }
+    $("#list").innerHTML = accounts.map(card).join("");
+  }
+</script>
+</body>
+</html>

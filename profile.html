@@ -118,6 +118,7 @@
       <div style="display:flex;justify-content:center">${avatarHTML(p, uid, undefined, "lg")}</div>
       <h1 style="margin-top:12px">${esc(p.name)} ${flag(p.country)}</h1>
       <p class="muted small">${esc(countryName(p.country))}${isMe ? " · " + esc(user.email) : ""}</p>
+      ${p.currentCountry ? `<p class="muted small" style="margin-top:4px">📍 Currently in ${flag(p.currentCountry)} ${esc(countryName(p.currentCountry))}${p.reason ? ` · ${esc(p.reason)}` : ""}</p>` : ""}
       <div class="stats">
         <div class="stat"><b id="postCount">–</b><span>posts</span></div>
         <div class="stat"><b>${fmtPoints(p.points)}</b><span>points</span></div>
