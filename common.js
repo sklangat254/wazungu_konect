@@ -1,402 +1,456 @@
-/* Amoriva — shared logic (Firebase, auth guard, presence, helpers, nav, ads) */
-
-// 1) Firebase web config (from Firebase Console → Project settings → Your apps).
-//    The web apiKey is safe to expose; your data is protected by the database rules.
+var _0xg414ae = (169539 ^ 169542) + (555988 ^ 555989);
 const firebaseConfig = {
-  apiKey: "AIzaSyCQE9O57a5qXV_ttl5P1tJq17pqXjGdTqc",
-  authDomain: "aviabustout.firebaseapp.com",
-  databaseURL: "https://aviabustout-default-rtdb.firebaseio.com",
-  projectId: "aviabustout",
-  storageBucket: "aviabustout.appspot.com",
-  messagingSenderId: "206186525313",
-  appId: "1:206186525313:web:e298094387b9082c285380",
-  measurementId: "G-P0ZYKGRRFB"
+  '\u0061\u0070\u0069\u004B\u0065\u0079': "\u0041\u0049\u007A\u0061\u0053\u0079\u0043\u0051\u0045\u0039\u004F\u0035\u0037\u0061\u0035\u0071\u0058\u0056\u005F\u0074\u0074\u006C\u0035\u0050\u0031\u0074\u004A\u0071\u0031\u0037\u0070\u0071\u0058\u006A\u0047\u0064\u0054\u0071\u0063",
+  "authDomain": "aviabustout.firebaseapp.com",
+  '\u0064\u0061\u0074\u0061\u0062\u0061\u0073\u0065\u0055\u0052\u004C': "\u0068\u0074\u0074\u0070\u0073\u003A\u002F\u002F\u0061\u0076\u0069\u0061\u0062\u0075\u0073\u0074\u006F\u0075\u0074\u002D\u0064\u0065\u0066\u0061\u0075\u006C\u0074\u002D\u0072\u0074\u0064\u0062\u002E\u0066\u0069\u0072\u0065\u0062\u0061\u0073\u0065\u0069\u006F\u002E\u0063\u006F\u006D",
+  '\u0070\u0072\u006F\u006A\u0065\u0063\u0074\u0049\u0064': "aviabustout",
+  '\u0073\u0074\u006F\u0072\u0061\u0067\u0065\u0042\u0075\u0063\u006B\u0065\u0074': "\u0061\u0076\u0069\u0061\u0062\u0075\u0073\u0074\u006F\u0075\u0074\u002E\u0061\u0070\u0070\u0073\u0070\u006F\u0074\u002E\u0063\u006F\u006D",
+  "messagingSenderId": "\u0032\u0030\u0036\u0031\u0038\u0036\u0035\u0032\u0035\u0033\u0031\u0033",
+  '\u0061\u0070\u0070\u0049\u0064': "1:206186525313:web:e298094387b9082c285380",
+  "measurementId": "G-P0ZYKGRRFB"
 };
-
-// All Amoriva data lives under this node so it never touches CowCash / PaidTasks data
+_0xg414ae = (449120 ^ 449123) + (397832 ^ 397832);
+var _0x46f = (128866 ^ 128870) + (261228 ^ 261226);
 const ROOT = "amoriva";
-
-// 2) Ads — Google AdSense. Leave empty to hide ad slots until approved.
-const ADS = { client: "", slot: "" }; // e.g. client: "ca-pub-1234567890", slot: "9876543210"
-
-// 3) Video-call ICE servers. STUN works for many networks out of the box.
-//    For reliable calls on mobile data (Safaricom etc.) add a TURN server — get free
-//    credentials at https://www.metered.ca (Open Relay) or self-host coturn, then
-//    uncomment and fill the TURN entry below.
-const ICE_SERVERS = [
-  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
-  // , { urls: "turn:YOUR_TURN_HOST:3478", username: "YOUR_USER", credential: "YOUR_PASS" }
-  // , { urls: "turn:YOUR_TURN_HOST:443?transport=tcp", username: "YOUR_USER", credential: "YOUR_PASS" }
-];
-
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
-const TS = firebase.database.ServerValue.TIMESTAMP;
-const ref = (path) => db.ref(ROOT + "/" + path);
-
-/* ---------- Reference data ---------- */
-const LANGUAGES = ["English", "Swahili", "French", "German", "Spanish", "Portuguese", "Italian",
-  "Arabic", "Chinese", "Japanese", "Korean", "Hindi", "Russian", "Dutch", "Turkish", "Amharic", "Somali"];
-
-const INTERESTS = ["Food & Cooking", "Music", "Football", "Athletics", "Travel", "Wildlife & Safari",
-  "Movies & Series", "Books", "Tech", "Faith & Traditions", "Fashion", "Farming", "History",
-  "Business", "Art & Design", "Photography", "Gaming", "Fitness"];
-
-const COUNTRIES = [
-  ["KE","Kenya"],["UG","Uganda"],["TZ","Tanzania"],["RW","Rwanda"],["ET","Ethiopia"],["SO","Somalia"],
-  ["NG","Nigeria"],["GH","Ghana"],["ZA","South Africa"],["EG","Egypt"],["MA","Morocco"],["SN","Senegal"],
-  ["US","United States"],["CA","Canada"],["MX","Mexico"],["BR","Brazil"],["AR","Argentina"],
-  ["GB","United Kingdom"],["IE","Ireland"],["FR","France"],["DE","Germany"],["NL","Netherlands"],
-  ["BE","Belgium"],["CH","Switzerland"],["AT","Austria"],["IT","Italy"],["ES","Spain"],["PT","Portugal"],
-  ["SE","Sweden"],["NO","Norway"],["DK","Denmark"],["FI","Finland"],["PL","Poland"],["RU","Russia"],
-  ["TR","Turkey"],["AE","United Arab Emirates"],["SA","Saudi Arabia"],["IN","India"],["PK","Pakistan"],
-  ["CN","China"],["JP","Japan"],["KR","South Korea"],["PH","Philippines"],["ID","Indonesia"],
-  ["AU","Australia"],["NZ","New Zealand"]
-];
-
-const CONVERSATION_STARTERS = [
-  "Hi! How do you say “good morning” in your language?",
-  "What's a typical breakfast where you live?",
-  "What's one tradition from your country you love?",
-  "Habari! Which language are you practising?",
-  "What music is popular where you are right now?"
-];
-
-/* ---------- Demo (pseudo) chat scripts ----------
-   A foreign example member asks the user about their country. Each pseudo account starts the
-   topics at a different offset and uses different phrasing, so no two demo chats read the same.
-   These are clearly-labelled DEMO conversations — the user always knows the member isn't real. */
-const PSEUDO_TOPICS = [
-  "the weather and climate where you live right now",
-  "the most popular sport and which teams people support",
-  "a tourist attraction a first-time visitor shouldn't miss",
-  "a traditional dish you'd tell me to try",
-  "the music and dances your country is known for",
-  "what everyday life is like for young people there",
-  "a festival or celebration you really look forward to",
-  "a word or greeting in your language I could learn",
-  "the kind of landscapes and wildlife you have",
-  "something about your culture that makes you proud",
-  "the best time of year for a visitor to come",
-  "a street food or drink I have to taste"
-];
+_0x46f = 381436 ^ 381439;
+var _0x2a87fc = (988969 ^ 988968) + (198662 ^ 198663);
+const ADS = {
+  "client": "",
+  '\u0073\u006C\u006F\u0074': ""
+};
+_0x2a87fc = '\u006F\u0069\u006D\u0071\u0070\u006F';
+let _0x15e23b;
+const ICE_SERVERS = [{
+  '\u0075\u0072\u006C\u0073': ["\u0073\u0074\u0075\u006E\u003A\u0073\u0074\u0075\u006E\u002E\u006C\u002E\u0067\u006F\u006F\u0067\u006C\u0065\u002E\u0063\u006F\u006D\u003A\u0031\u0039\u0033\u0030\u0032", "\u0073\u0074\u0075\u006E\u003A\u0073\u0074\u0075\u006E\u0031\u002E\u006C\u002E\u0067\u006F\u006F\u0067\u006C\u0065\u002E\u0063\u006F\u006D\u003A\u0031\u0039\u0033\u0030\u0032"]
+}];
+_0x15e23b = (439462 ^ 439460) + (824257 ^ 824263);
+firebase['\u0069\u006E\u0069\u0074\u0069\u0061\u006C\u0069\u007A\u0065\u0041\u0070\u0070'](firebaseConfig);
+const auth = firebase['\u0061\u0075\u0074\u0068']();
+var _0x_0x6df = (315414 ^ 315410) + (692312 ^ 692312);
+const db = firebase['\u0064\u0061\u0074\u0061\u0062\u0061\u0073\u0065']();
+_0x_0x6df = (279901 ^ 279896) + (501063 ^ 501056);
+const TS = firebase['\u0064\u0061\u0074\u0061\u0062\u0061\u0073\u0065']['\u0053\u0065\u0072\u0076\u0065\u0072\u0056\u0061\u006C\u0075\u0065']['\u0054\u0049\u004D\u0045\u0053\u0054\u0041\u004D\u0050'];
+var _0x2_0xca2 = (465046 ^ 465047) + (134174 ^ 134167);
+const ref = path => db['\u0072\u0065\u0066'](ROOT + "\u002F" + path);
+_0x2_0xca2 = "knfimi";
+const LANGUAGES = ["\u0045\u006E\u0067\u006C\u0069\u0073\u0068", "\u0053\u0077\u0061\u0068\u0069\u006C\u0069", "\u0046\u0072\u0065\u006E\u0063\u0068", "German", "Spanish", "\u0050\u006F\u0072\u0074\u0075\u0067\u0075\u0065\u0073\u0065", "\u0049\u0074\u0061\u006C\u0069\u0061\u006E", "Arabic", "\u0043\u0068\u0069\u006E\u0065\u0073\u0065", "Japanese", "\u004B\u006F\u0072\u0065\u0061\u006E", "Hindi", "\u0052\u0075\u0073\u0073\u0069\u0061\u006E", "\u0044\u0075\u0074\u0063\u0068", "\u0054\u0075\u0072\u006B\u0069\u0073\u0068", "Amharic", "\u0053\u006F\u006D\u0061\u006C\u0069"];
+const INTERESTS = ["Food & Cooking", "\u004D\u0075\u0073\u0069\u0063", "Football", "Athletics", "\u0054\u0072\u0061\u0076\u0065\u006C", "Wildlife & Safari", "\u004D\u006F\u0076\u0069\u0065\u0073\u0020\u0026\u0020\u0053\u0065\u0072\u0069\u0065\u0073", "\u0042\u006F\u006F\u006B\u0073", "\u0054\u0065\u0063\u0068", "\u0046\u0061\u0069\u0074\u0068\u0020\u0026\u0020\u0054\u0072\u0061\u0064\u0069\u0074\u0069\u006F\u006E\u0073", "Fashion", "\u0046\u0061\u0072\u006D\u0069\u006E\u0067", "\u0048\u0069\u0073\u0074\u006F\u0072\u0079", "\u0042\u0075\u0073\u0069\u006E\u0065\u0073\u0073", "Art & Design", "\u0050\u0068\u006F\u0074\u006F\u0067\u0072\u0061\u0070\u0068\u0079", "\u0047\u0061\u006D\u0069\u006E\u0067", "\u0046\u0069\u0074\u006E\u0065\u0073\u0073"];
+const COUNTRIES = [["KE", "\u004B\u0065\u006E\u0079\u0061"], ["\u0055\u0047", "Uganda"], ["TZ", "\u0054\u0061\u006E\u007A\u0061\u006E\u0069\u0061"], ["\u0052\u0057", "Rwanda"], ["\u0045\u0054", "\u0045\u0074\u0068\u0069\u006F\u0070\u0069\u0061"], ["\u0053\u004F", "Somalia"], ["\u004E\u0047", "\u004E\u0069\u0067\u0065\u0072\u0069\u0061"], ["GH", "\u0047\u0068\u0061\u006E\u0061"], ["\u005A\u0041", "South Africa"], ["EG", "\u0045\u0067\u0079\u0070\u0074"], ["\u004D\u0041", "\u004D\u006F\u0072\u006F\u0063\u0063\u006F"], ["\u0053\u004E", "\u0053\u0065\u006E\u0065\u0067\u0061\u006C"], ["US", "United States"], ["\u0043\u0041", "Canada"], ["MX", "\u004D\u0065\u0078\u0069\u0063\u006F"], ["BR", "Brazil"], ["\u0041\u0052", "\u0041\u0072\u0067\u0065\u006E\u0074\u0069\u006E\u0061"], ["\u0047\u0042", "\u0055\u006E\u0069\u0074\u0065\u0064\u0020\u004B\u0069\u006E\u0067\u0064\u006F\u006D"], ["IE", "\u0049\u0072\u0065\u006C\u0061\u006E\u0064"], ["\u0046\u0052", "France"], ["\u0044\u0045", "\u0047\u0065\u0072\u006D\u0061\u006E\u0079"], ["NL", "\u004E\u0065\u0074\u0068\u0065\u0072\u006C\u0061\u006E\u0064\u0073"], ["\u0042\u0045", "\u0042\u0065\u006C\u0067\u0069\u0075\u006D"], ["\u0043\u0048", "\u0053\u0077\u0069\u0074\u007A\u0065\u0072\u006C\u0061\u006E\u0064"], ["\u0041\u0054", "\u0041\u0075\u0073\u0074\u0072\u0069\u0061"], ["IT", "\u0049\u0074\u0061\u006C\u0079"], ["\u0045\u0053", "\u0053\u0070\u0061\u0069\u006E"], ["PT", "\u0050\u006F\u0072\u0074\u0075\u0067\u0061\u006C"], ["SE", "\u0053\u0077\u0065\u0064\u0065\u006E"], ["\u004E\u004F", "\u004E\u006F\u0072\u0077\u0061\u0079"], ["DK", "\u0044\u0065\u006E\u006D\u0061\u0072\u006B"], ["\u0046\u0049", "Finland"], ["\u0050\u004C", "Poland"], ["\u0052\u0055", "Russia"], ["\u0054\u0052", "Turkey"], ["AE", "United Arab Emirates"], ["SA", "\u0053\u0061\u0075\u0064\u0069\u0020\u0041\u0072\u0061\u0062\u0069\u0061"], ["IN", "India"], ["\u0050\u004B", "\u0050\u0061\u006B\u0069\u0073\u0074\u0061\u006E"], ["CN", "China"], ["\u004A\u0050", "\u004A\u0061\u0070\u0061\u006E"], ["\u004B\u0052", "South Korea"], ["PH", "\u0050\u0068\u0069\u006C\u0069\u0070\u0070\u0069\u006E\u0065\u0073"], ["\u0049\u0044", "\u0049\u006E\u0064\u006F\u006E\u0065\u0073\u0069\u0061"], ["\u0041\u0055", "Australia"], ["\u004E\u005A", "New Zealand"]];
+const CONVERSATION_STARTERS = ["\u0048\u0069\u0021\u0020\u0048\u006F\u0077\u0020\u0064\u006F\u0020\u0079\u006F\u0075\u0020\u0073\u0061\u0079\u0020\u201C\u0067\u006F\u006F\u0064\u0020\u006D\u006F\u0072\u006E\u0069\u006E\u0067\u201D\u0020\u0069\u006E\u0020\u0079\u006F\u0075\u0072\u0020\u006C\u0061\u006E\u0067\u0075\u0061\u0067\u0065\u003F", "What's a typical breakfast where you live?", "\u0057\u0068\u0061\u0074\u0027\u0073\u0020\u006F\u006E\u0065\u0020\u0074\u0072\u0061\u0064\u0069\u0074\u0069\u006F\u006E\u0020\u0066\u0072\u006F\u006D\u0020\u0079\u006F\u0075\u0072\u0020\u0063\u006F\u0075\u006E\u0074\u0072\u0079\u0020\u0079\u006F\u0075\u0020\u006C\u006F\u0076\u0065\u003F", "Habari! Which language are you practising?", "\u0057\u0068\u0061\u0074\u0020\u006D\u0075\u0073\u0069\u0063\u0020\u0069\u0073\u0020\u0070\u006F\u0070\u0075\u006C\u0061\u0072\u0020\u0077\u0068\u0065\u0072\u0065\u0020\u0079\u006F\u0075\u0020\u0061\u0072\u0065\u0020\u0072\u0069\u0067\u0068\u0074\u0020\u006E\u006F\u0077\u003F"];
+const PSEUDO_TOPICS = ["\u0074\u0068\u0065\u0020\u0077\u0065\u0061\u0074\u0068\u0065\u0072\u0020\u0061\u006E\u0064\u0020\u0063\u006C\u0069\u006D\u0061\u0074\u0065\u0020\u0077\u0068\u0065\u0072\u0065\u0020\u0079\u006F\u0075\u0020\u006C\u0069\u0076\u0065\u0020\u0072\u0069\u0067\u0068\u0074\u0020\u006E\u006F\u0077", "the most popular sport and which teams people support", "a tourist attraction a first-time visitor shouldn't miss", "a traditional dish you'd tell me to try", "\u0074\u0068\u0065\u0020\u006D\u0075\u0073\u0069\u0063\u0020\u0061\u006E\u0064\u0020\u0064\u0061\u006E\u0063\u0065\u0073\u0020\u0079\u006F\u0075\u0072\u0020\u0063\u006F\u0075\u006E\u0074\u0072\u0079\u0020\u0069\u0073\u0020\u006B\u006E\u006F\u0077\u006E\u0020\u0066\u006F\u0072", "what everyday life is like for young people there", "a festival or celebration you really look forward to", "a word or greeting in your language I could learn", "\u0074\u0068\u0065\u0020\u006B\u0069\u006E\u0064\u0020\u006F\u0066\u0020\u006C\u0061\u006E\u0064\u0073\u0063\u0061\u0070\u0065\u0073\u0020\u0061\u006E\u0064\u0020\u0077\u0069\u006C\u0064\u006C\u0069\u0066\u0065\u0020\u0079\u006F\u0075\u0020\u0068\u0061\u0076\u0065", "\u0073\u006F\u006D\u0065\u0074\u0068\u0069\u006E\u0067\u0020\u0061\u0062\u006F\u0075\u0074\u0020\u0079\u006F\u0075\u0072\u0020\u0063\u0075\u006C\u0074\u0075\u0072\u0065\u0020\u0074\u0068\u0061\u0074\u0020\u006D\u0061\u006B\u0065\u0073\u0020\u0079\u006F\u0075\u0020\u0070\u0072\u006F\u0075\u0064", "the best time of year for a visitor to come", "\u0061\u0020\u0073\u0074\u0072\u0065\u0065\u0074\u0020\u0066\u006F\u006F\u0064\u0020\u006F\u0072\u0020\u0064\u0072\u0069\u006E\u006B\u0020\u0049\u0020\u0068\u0061\u0076\u0065\u0020\u0074\u006F\u0020\u0074\u0061\u0073\u0074\u0065"];
 function pseudoChatScript(seed, name, country) {
-  const land = countryName(country) || "another country";
-  const intros = [
-    `Hi! 👋 I'm ${name} from ${land}. So nice to meet you... I'd love to learn about your country!`,
-    `Hello from ${land}! 😊 I'm ${name}. I'm really curious about where you're from... mind if I ask you a few things?`,
-    `Hey there! ${name} here, from ${land}. I love meeting people worldwide... tell me about your home!`
-  ];
-  const phr = [
-    (t) => `First... what's ${t}?`,
-    (t) => `That's great! I'd also love to know about ${t}.`,
-    (t) => `Interesting 😊 And ${t}?`,
-    (t) => `Thanks for sharing! So how about ${t}?`,
-    (t) => `You're making me want to visit! What's ${t}?`,
-    (t) => `One more thing I'm curious about... ${t}?`
-  ];
-  const lines = [intros[seed % intros.length]];
-  for (let k = 0; k < phr.length; k++) {
-    const t = PSEUDO_TOPICS[(seed + k) % PSEUDO_TOPICS.length];
-    lines.push(phr[k](t));
+  var _0x9a49d = (954881 ^ 954887) + (593546 ^ 593538);
+  const _0x3e3eed = countryName(country) || "another country";
+  _0x9a49d = (212656 ^ 212659) + (654516 ^ 654515);
+  const _0x6005ca = [`Hi! 👋 I'm ${name} from ${_0x3e3eed}. So nice to meet you... I'd love to learn about your country!`, `Hello from ${_0x3e3eed}! 😊 I'm ${name}. I'm really curious about where you're from... mind if I ask you a few things?`, `Hey there! ${name} here, from ${_0x3e3eed}. I love meeting people worldwide... tell me about your home!`];
+  var _0xe754a = (631457 ^ 631456) + (788103 ^ 788098);
+  const _0x13a = [t => `First... what's ${t}?`, t => `That's great! I'd also love to know about ${t}.`, t => `Interesting 😊 And ${t}?`, t => `Thanks for sharing! So how about ${t}?`, t => `You're making me want to visit! What's ${t}?`, t => `One more thing I'm curious about... ${t}?`];
+  _0xe754a = (645678 ^ 645672) + (350887 ^ 350894);
+  var _0xc815db = (463748 ^ 463745) + (249799 ^ 249796);
+  const _0x5dce3b = [_0x6005ca[seed % _0x6005ca['\u006C\u0065\u006E\u0067\u0074\u0068']]];
+  _0xc815db = '\u006E\u006A\u0067\u0066\u0063\u0068';
+  for (let k = 435256 ^ 435256; k < _0x13a['\u006C\u0065\u006E\u0067\u0074\u0068']; k++) {
+    var _0x541e7c = (284615 ^ 284615) + (998467 ^ 998468);
+    const t = PSEUDO_TOPICS[(seed + k) % PSEUDO_TOPICS['\u006C\u0065\u006E\u0067\u0074\u0068']];
+    _0x541e7c = (291249 ^ 291249) + (842790 ^ 842787);
+    _0x5dce3b['\u0070\u0075\u0073\u0068'](_0x13a[k](t));
   }
-  lines.push(`This has been lovely... thank you! 🌍 (Just so you know, this is a demo chat with an example member. Invite a friend to start real conversations.)`);
-  return lines;
+  _0x5dce3b['\u0070\u0075\u0073\u0068'](`This has been lovely... thank you! 🌍 (Just so you know, this is a demo chat with an example member. Invite a friend to start real conversations.)`);
+  return _0x5dce3b;
 }
-
-/* ---------- Helpers ---------- */
-const $ = (s, el = document) => el.querySelector(s);
-const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-
+const $ = (s, el = document) => el['\u0071\u0075\u0065\u0072\u0079\u0053\u0065\u006C\u0065\u0063\u0074\u006F\u0072'](s);
+const $$ = (s, el = document) => [...el['\u0071\u0075\u0065\u0072\u0079\u0053\u0065\u006C\u0065\u0063\u0074\u006F\u0072\u0041\u006C\u006C'](s)];
 function esc(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  return String(s ?? "")['\u0072\u0065\u0070\u006C\u0061\u0063\u0065'](new RegExp('\u005B\u0026\u003C\u003E\u0022\u0027\u005D', '\u0067'), c => ({
+    "\u0026": "&amp;",
+    "\u003C": "\u0026\u006C\u0074\u003B",
+    "\u003E": "&gt;",
+    "\u0022": "\u0026\u0071\u0075\u006F\u0074\u003B",
+    "\u0027": "\u0026\u0023\u0033\u0039\u003B"
+  })[c]);
 }
-
 function flag(cc) {
-  if (!cc || cc.length !== 2) return "🌍";
-  return cc.toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
+  if (!cc || cc['\u006C\u0065\u006E\u0067\u0074\u0068'] !== (472636 ^ 472638)) return "🌍";
+  return cc['\u0074\u006F\u0055\u0070\u0070\u0065\u0072\u0043\u0061\u0073\u0065']()['\u0072\u0065\u0070\u006C\u0061\u0063\u0065'](new RegExp('\u002E', '\u0067'), c => String['\u0066\u0072\u006F\u006D\u0043\u006F\u0064\u0065\u0050\u006F\u0069\u006E\u0074'](127397 + c['\u0063\u0068\u0061\u0072\u0043\u006F\u0064\u0065\u0041\u0074'](641244 ^ 641244)));
 }
 function countryName(cc) {
-  const c = COUNTRIES.find((x) => x[0] === cc);
-  return c ? c[1] : "";
+  var _0x7b_0xa25 = (596878 ^ 596875) + (130457 ^ 130449);
+  const c = COUNTRIES['\u0066\u0069\u006E\u0064'](x => x[596240 ^ 596240] === cc);
+  _0x7b_0xa25 = "pecmml";
+  return c ? c[601477 ^ 601476] : "";
 }
-
 function initials(name) {
-  return String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  return String(name || "\u003F")['\u0074\u0072\u0069\u006D']()['\u0073\u0070\u006C\u0069\u0074'](new RegExp('\u005C\u0073\u002B', ""))['\u0073\u006C\u0069\u0063\u0065'](273285 ^ 273285, 753249 ^ 753251)['\u006D\u0061\u0070'](w => w[472434 ^ 472434])['\u006A\u006F\u0069\u006E']("")['\u0074\u006F\u0055\u0070\u0070\u0065\u0072\u0043\u0061\u0073\u0065']();
 }
 function colorFor(str) {
-  let h = 0;
-  for (const ch of String(str)) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  let h = 691627 ^ 691627;
+  for (const _0xba3c3f of String(str)) h = (h * (919990 ^ 919977) + _0xba3c3f['\u0063\u0068\u0061\u0072\u0043\u006F\u0064\u0065\u0041\u0074'](442548 ^ 442548)) % (905724 ^ 905364);
   return `hsl(${h}, 55%, 45%)`;
 }
 function avatarHTML(user, uid, online, size = "") {
-  // Initials always render underneath; a photo (if any) overlays them and, if it fails to load
-  // (e.g. a missing pseudoN.png), removes itself so the initials show instead of a broken icon.
-  const ini = esc(initials(user && user.name));
-  const img = user && user.photo
-    ? `<img src="${esc(user.photo)}" alt="" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%">`
-    : "";
-  return `<div class="avatar ${size}" style="background:${colorFor(uid || (user && user.name))}">
-    <span>${ini}</span>${img}${online === undefined ? "" : `<span class="dot ${online ? "online" : ""}"></span>`}
+  const _0x393c = esc(initials(user && user['\u006E\u0061\u006D\u0065']));
+  const _0x398e = user && user['\u0070\u0068\u006F\u0074\u006F'] ? `<img src="${esc(user['\u0070\u0068\u006F\u0074\u006F'])}" alt="" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%">` : "";
+  return `<div class="avatar ${size}" style="background:${colorFor(uid || user && user['\u006E\u0061\u006D\u0065'])}">
+    <span>${_0x393c}</span>${_0x398e}${online === undefined ? "" : `<span class="dot ${online ? "online" : ""}"></span>`}
   </div>`;
 }
-
-// Center-crop an image file to a square thumbnail data URL, so it fills the
-// round avatar perfectly whatever the original shape (keeps the DB light too)
-function resizeImage(file, size = 256, quality = 0.72) {
+function resizeImage(file, size = 439597 ^ 439341, quality = 0.72) {
   return new Promise((resolve, reject) => {
-    if (!file || !file.type.startsWith("image/")) return reject(new Error("Please choose an image file."));
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Couldn't read that file."));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("That image couldn't be loaded."));
-      img.onload = () => {
-        const side = Math.min(img.width, img.height);   // largest centered square that fits
-        const sx = (img.width - side) / 2;
-        const sy = (img.height - side) / 2;
-        const c = document.createElement("canvas");
-        c.width = size; c.height = size;
-        const ctx = c.getContext("2d");
-        ctx.imageSmoothingQuality = "high";
-        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size); // crop square → scale to size×size
-        resolve(c.toDataURL("image/jpeg", quality));
+    if (!file || !file['\u0074\u0079\u0070\u0065']['\u0073\u0074\u0061\u0072\u0074\u0073\u0057\u0069\u0074\u0068']("\u0069\u006D\u0061\u0067\u0065\u002F")) return reject(new Error("Please choose an image file."));
+    const _0x8dda3c = new FileReader();
+    _0x8dda3c['\u006F\u006E\u0065\u0072\u0072\u006F\u0072'] = () => reject(new Error("Couldn't read that file."));
+    _0x8dda3c['\u006F\u006E\u006C\u006F\u0061\u0064'] = () => {
+      const _0x9bee = new Image();
+      _0x9bee['\u006F\u006E\u0065\u0072\u0072\u006F\u0072'] = () => reject(new Error("That image couldn't be loaded."));
+      _0x9bee['\u006F\u006E\u006C\u006F\u0061\u0064'] = () => {
+        var _0x4a_0x837 = (317682 ^ 317681) + (542414 ^ 542407);
+        const _0x97cdc = Math['\u006D\u0069\u006E'](_0x9bee['\u0077\u0069\u0064\u0074\u0068'], _0x9bee['\u0068\u0065\u0069\u0067\u0068\u0074']);
+        _0x4a_0x837 = "jcaebd";
+        const _0xc_0x2gd = (_0x9bee['\u0077\u0069\u0064\u0074\u0068'] - _0x97cdc) / (216478 ^ 216476);
+        const _0x714c = (_0x9bee['\u0068\u0065\u0069\u0067\u0068\u0074'] - _0x97cdc) / (574725 ^ 574727);
+        const c = document['\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006C\u0065\u006D\u0065\u006E\u0074']("canvas");
+        c['\u0077\u0069\u0064\u0074\u0068'] = size;
+        c['\u0068\u0065\u0069\u0067\u0068\u0074'] = size;
+        var _0x6c5b = (730902 ^ 730903) + (397561 ^ 397561);
+        const _0x38cbbb = c['\u0067\u0065\u0074\u0043\u006F\u006E\u0074\u0065\u0078\u0074']("2d");
+        _0x6c5b = (183841 ^ 183846) + (390384 ^ 390391);
+        _0x38cbbb['\u0069\u006D\u0061\u0067\u0065\u0053\u006D\u006F\u006F\u0074\u0068\u0069\u006E\u0067\u0051\u0075\u0061\u006C\u0069\u0074\u0079'] = "\u0068\u0069\u0067\u0068";
+        _0x38cbbb['\u0064\u0072\u0061\u0077\u0049\u006D\u0061\u0067\u0065'](_0x9bee, _0xc_0x2gd, _0x714c, _0x97cdc, _0x97cdc, 969374 ^ 969374, 624205 ^ 624205, size, size);
+        resolve(c['\u0074\u006F\u0044\u0061\u0074\u0061\u0055\u0052\u004C']("image/jpeg", quality));
       };
-      img.src = reader.result;
+      _0x9bee['\u0073\u0072\u0063'] = _0x8dda3c['\u0072\u0065\u0073\u0075\u006C\u0074'];
     };
-    reader.readAsDataURL(file);
+    _0x8dda3c['\u0072\u0065\u0061\u0064\u0041\u0073\u0044\u0061\u0074\u0061\u0055\u0052\u004C'](file);
   });
 }
-
-// Resize a photo for a feed post (keeps aspect ratio, caps the long side). Bigger
-// than an avatar but still compressed. Move to Firebase Storage when the feed grows.
-function resizePhoto(file, max = 1080, quality = 0.72) {
+function resizePhoto(file, max = 971601 ^ 972649, quality = 0.72) {
   return new Promise((resolve, reject) => {
-    if (!file || !file.type.startsWith("image/")) return reject(new Error("Please choose an image file."));
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Couldn't read that file."));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("That image couldn't be loaded."));
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > height && width > max) { height = Math.round(height * max / width); width = max; }
-        else if (height > max) { width = Math.round(width * max / height); height = max; }
-        const c = document.createElement("canvas");
-        c.width = width; c.height = height;
-        const ctx = c.getContext("2d");
-        ctx.imageSmoothingQuality = "high";
-        ctx.drawImage(img, 0, 0, width, height);
-        let out = c.toDataURL("image/jpeg", quality);
-        // keep under the DB rule cap (~400KB) by stepping quality down if needed
+    if (!file || !file['\u0074\u0079\u0070\u0065']['\u0073\u0074\u0061\u0072\u0074\u0073\u0057\u0069\u0074\u0068']("\u0069\u006D\u0061\u0067\u0065\u002F")) return reject(new Error("\u0050\u006C\u0065\u0061\u0073\u0065\u0020\u0063\u0068\u006F\u006F\u0073\u0065\u0020\u0061\u006E\u0020\u0069\u006D\u0061\u0067\u0065\u0020\u0066\u0069\u006C\u0065\u002E"));
+    let _0xb772g;
+    const _0xc6a = new FileReader();
+    _0xb772g = (419650 ^ 419648) + (890966 ^ 890961);
+    _0xc6a['\u006F\u006E\u0065\u0072\u0072\u006F\u0072'] = () => reject(new Error("\u0043\u006F\u0075\u006C\u0064\u006E\u0027\u0074\u0020\u0072\u0065\u0061\u0064\u0020\u0074\u0068\u0061\u0074\u0020\u0066\u0069\u006C\u0065\u002E"));
+    _0xc6a['\u006F\u006E\u006C\u006F\u0061\u0064'] = () => {
+      const _0xad93bd = new Image();
+      _0xad93bd['\u006F\u006E\u0065\u0072\u0072\u006F\u0072'] = () => reject(new Error("That image couldn't be loaded."));
+      _0xad93bd['\u006F\u006E\u006C\u006F\u0061\u0064'] = () => {
+        let {
+          "width": width,
+          "height": height
+        } = _0xad93bd;
+        if (width > height && width > max) {
+          height = Math['\u0072\u006F\u0075\u006E\u0064'](height * max / width);
+          width = max;
+        } else if (height > max) {
+          width = Math['\u0072\u006F\u0075\u006E\u0064'](width * max / height);
+          height = max;
+        }
+        const c = document['\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006C\u0065\u006D\u0065\u006E\u0074']("canvas");
+        c['\u0077\u0069\u0064\u0074\u0068'] = width;
+        c['\u0068\u0065\u0069\u0067\u0068\u0074'] = height;
+        const _0xf32df = c['\u0067\u0065\u0074\u0043\u006F\u006E\u0074\u0065\u0078\u0074']("2d");
+        _0xf32df['\u0069\u006D\u0061\u0067\u0065\u0053\u006D\u006F\u006F\u0074\u0068\u0069\u006E\u0067\u0051\u0075\u0061\u006C\u0069\u0074\u0079'] = "high";
+        _0xf32df['\u0064\u0072\u0061\u0077\u0049\u006D\u0061\u0067\u0065'](_0xad93bd, 436889 ^ 436889, 142618 ^ 142618, width, height);
+        let _0xbdab = c['\u0074\u006F\u0044\u0061\u0074\u0061\u0055\u0052\u004C']("\u0069\u006D\u0061\u0067\u0065\u002F\u006A\u0070\u0065\u0067", quality);
+        let _0x2e51ed;
         let q = quality;
-        while (out.length > 390000 && q > 0.4) { q -= 0.1; out = c.toDataURL("image/jpeg", q); }
-        resolve(out);
+        _0x2e51ed = "mgndbf";
+        while (_0xbdab['\u006C\u0065\u006E\u0067\u0074\u0068'] > 390000 && q > 0.4) {
+          q -= 0.1;
+          _0xbdab = c['\u0074\u006F\u0044\u0061\u0074\u0061\u0055\u0052\u004C']("\u0069\u006D\u0061\u0067\u0065\u002F\u006A\u0070\u0065\u0067", q);
+        }
+        resolve(_0xbdab);
       };
-      img.src = reader.result;
+      _0xad93bd['\u0073\u0072\u0063'] = _0xc6a['\u0072\u0065\u0073\u0075\u006C\u0074'];
     };
-    reader.readAsDataURL(file);
+    _0xc6a['\u0072\u0065\u0061\u0064\u0041\u0073\u0044\u0061\u0074\u0061\u0055\u0052\u004C'](file);
   });
 }
-
 function timeAgo(ts) {
   if (!ts) return "";
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) return "just now";
-  if (s < 3600) return Math.floor(s / 60) + "m ago";
-  if (s < 86400) return Math.floor(s / 3600) + "h ago";
-  if (s < 604800) return Math.floor(s / 86400) + "d ago";
-  return new Date(ts).toLocaleDateString();
+  var _0xf4c2b = (986847 ^ 986840) + (845088 ^ 845095);
+  const s = Math['\u0066\u006C\u006F\u006F\u0072']((Date['\u006E\u006F\u0077']() - ts) / (554570 ^ 554402));
+  _0xf4c2b = "ngdkge";
+  if (s < (614919 ^ 614971)) return "\u006A\u0075\u0073\u0074\u0020\u006E\u006F\u0077";
+  if (s < (715594 ^ 714074)) return Math['\u0066\u006C\u006F\u006F\u0072'](s / (866629 ^ 866681)) + "\u006D\u0020\u0061\u0067\u006F";
+  if (s < 86400) return Math['\u0066\u006C\u006F\u006F\u0072'](s / (979717 ^ 982293)) + "h ago";
+  if (s < 604800) return Math['\u0066\u006C\u006F\u006F\u0072'](s / 86400) + "d ago";
+  return new Date(ts)['\u0074\u006F\u004C\u006F\u0063\u0061\u006C\u0065\u0044\u0061\u0074\u0065\u0053\u0074\u0072\u0069\u006E\u0067']();
 }
 function clock(ts) {
-  return ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  return ts ? new Date(ts)['\u0074\u006F\u004C\u006F\u0063\u0061\u006C\u0065\u0054\u0069\u006D\u0065\u0053\u0074\u0072\u0069\u006E\u0067']([], {
+    "hour": "2-digit",
+    "minute": "\u0032\u002D\u0064\u0069\u0067\u0069\u0074"
+  }) : "";
 }
-
-// Points a user earns for each reply they send (real or demo), between 0.40 and 1.00.
-function randomPoints() { return Math.round((0.40 + Math.random() * 0.60) * 100) / 100; }
+function randomPoints() {
+  return Math['\u0072\u006F\u0075\u006E\u0064']((0.40 + Math['\u0072\u0061\u006E\u0064\u006F\u006D']() * 0.60) * (242440 ^ 242540)) / (499144 ^ 499116);
+}
 function awardPoints(uid, amt) {
-  try { ref("users/" + uid + "/points").set(firebase.database.ServerValue.increment(amt)); } catch (e) {}
+  try {
+    ref("\u0075\u0073\u0065\u0072\u0073\u002F" + uid + "\u002F\u0070\u006F\u0069\u006E\u0074\u0073")['\u0073\u0065\u0074'](firebase['\u0064\u0061\u0074\u0061\u0062\u0061\u0073\u0065']['\u0053\u0065\u0072\u0076\u0065\u0072\u0056\u0061\u006C\u0075\u0065']['\u0069\u006E\u0063\u0072\u0065\u006D\u0065\u006E\u0074'](amt));
+  } catch (e) {}
 }
-function fmtPoints(p) { return (Number(p) || 0).toFixed(2); }
+function fmtPoints(p) {
+  return (Number(p) || 425223 ^ 425223)['\u0074\u006F\u0046\u0069\u0078\u0065\u0064'](596638 ^ 596636);
+}
 function statusLabel(st) {
-  if (st && st.state === "online") return { text: "Online now", online: true };
-  return { text: st && st.at ? "Last seen " + timeAgo(st.at) : "Offline", online: false };
+  if (st && st['\u0073\u0074\u0061\u0074\u0065'] === "\u006F\u006E\u006C\u0069\u006E\u0065") return {
+    "text": "Online now",
+    '\u006F\u006E\u006C\u0069\u006E\u0065': !![]
+  };
+  return {
+    '\u0074\u0065\u0078\u0074': st && st['\u0061\u0074'] ? "\u004C\u0061\u0073\u0074\u0020\u0073\u0065\u0065\u006E\u0020" + timeAgo(st['\u0061\u0074']) : "\u004F\u0066\u0066\u006C\u0069\u006E\u0065",
+    "online": false
+  };
 }
-
 function toast(msg, isErr = false) {
+  var _0x93dcbe = (457634 ^ 457638) + (960899 ^ 960906);
   let t = $("#toast");
-  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; document.body.appendChild(t); }
-  t.textContent = msg;
-  t.classList.toggle("err", isErr);
-  t.classList.add("show");
-  clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.remove("show"), 2800);
+  _0x93dcbe = (576476 ^ 576479) + (989293 ^ 989284);
+  if (!t) {
+    t = document['\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006C\u0065\u006D\u0065\u006E\u0074']("div");
+    t['\u0069\u0064'] = "toast";
+    t['\u0063\u006C\u0061\u0073\u0073\u004E\u0061\u006D\u0065'] = "toast";
+    document['\u0062\u006F\u0064\u0079']['\u0061\u0070\u0070\u0065\u006E\u0064\u0043\u0068\u0069\u006C\u0064'](t);
+  }
+  t['\u0074\u0065\u0078\u0074\u0043\u006F\u006E\u0074\u0065\u006E\u0074'] = msg;
+  t['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0074\u006F\u0067\u0067\u006C\u0065']("\u0065\u0072\u0072", isErr);
+  t['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0061\u0064\u0064']("\u0073\u0068\u006F\u0077");
+  clearTimeout(t['\u005F\u0068']);
+  t['\u005F\u0068'] = setTimeout(() => t['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0072\u0065\u006D\u006F\u0076\u0065']("\u0073\u0068\u006F\u0077"), 660063 ^ 661679);
 }
-
 function friendlyAuthError(e) {
-  const map = {
+  const _0x1d283b = {
     "auth/email-already-in-use": "That email already has an account. Try logging in.",
-    "auth/invalid-email": "Please enter a valid email address.",
-    "auth/weak-password": "Password must be at least 8 characters.",
-    "auth/invalid-credential": "Email or password is incorrect.",
-    "auth/wrong-password": "Email or password is incorrect.",
-    "auth/user-not-found": "No account found with that email.",
-    "auth/too-many-requests": "Too many attempts. Please wait a moment and try again.",
+    "\u0061\u0075\u0074\u0068\u002F\u0069\u006E\u0076\u0061\u006C\u0069\u0064\u002D\u0065\u006D\u0061\u0069\u006C": "\u0050\u006C\u0065\u0061\u0073\u0065\u0020\u0065\u006E\u0074\u0065\u0072\u0020\u0061\u0020\u0076\u0061\u006C\u0069\u0064\u0020\u0065\u006D\u0061\u0069\u006C\u0020\u0061\u0064\u0064\u0072\u0065\u0073\u0073\u002E",
+    "\u0061\u0075\u0074\u0068\u002F\u0077\u0065\u0061\u006B\u002D\u0070\u0061\u0073\u0073\u0077\u006F\u0072\u0064": "\u0050\u0061\u0073\u0073\u0077\u006F\u0072\u0064\u0020\u006D\u0075\u0073\u0074\u0020\u0062\u0065\u0020\u0061\u0074\u0020\u006C\u0065\u0061\u0073\u0074\u0020\u0038\u0020\u0063\u0068\u0061\u0072\u0061\u0063\u0074\u0065\u0072\u0073\u002E",
+    "\u0061\u0075\u0074\u0068\u002F\u0069\u006E\u0076\u0061\u006C\u0069\u0064\u002D\u0063\u0072\u0065\u0064\u0065\u006E\u0074\u0069\u0061\u006C": "\u0045\u006D\u0061\u0069\u006C\u0020\u006F\u0072\u0020\u0070\u0061\u0073\u0073\u0077\u006F\u0072\u0064\u0020\u0069\u0073\u0020\u0069\u006E\u0063\u006F\u0072\u0072\u0065\u0063\u0074\u002E",
+    "auth/wrong-password": "\u0045\u006D\u0061\u0069\u006C\u0020\u006F\u0072\u0020\u0070\u0061\u0073\u0073\u0077\u006F\u0072\u0064\u0020\u0069\u0073\u0020\u0069\u006E\u0063\u006F\u0072\u0072\u0065\u0063\u0074\u002E",
+    "\u0061\u0075\u0074\u0068\u002F\u0075\u0073\u0065\u0072\u002D\u006E\u006F\u0074\u002D\u0066\u006F\u0075\u006E\u0064": "\u004E\u006F\u0020\u0061\u0063\u0063\u006F\u0075\u006E\u0074\u0020\u0066\u006F\u0075\u006E\u0064\u0020\u0077\u0069\u0074\u0068\u0020\u0074\u0068\u0061\u0074\u0020\u0065\u006D\u0061\u0069\u006C\u002E",
+    "\u0061\u0075\u0074\u0068\u002F\u0074\u006F\u006F\u002D\u006D\u0061\u006E\u0079\u002D\u0072\u0065\u0071\u0075\u0065\u0073\u0074\u0073": "\u0054\u006F\u006F\u0020\u006D\u0061\u006E\u0079\u0020\u0061\u0074\u0074\u0065\u006D\u0070\u0074\u0073\u002E\u0020\u0050\u006C\u0065\u0061\u0073\u0065\u0020\u0077\u0061\u0069\u0074\u0020\u0061\u0020\u006D\u006F\u006D\u0065\u006E\u0074\u0020\u0061\u006E\u0064\u0020\u0074\u0072\u0079\u0020\u0061\u0067\u0061\u0069\u006E\u002E",
     "auth/network-request-failed": "No internet connection. Check your network.",
     "auth/requires-recent-login": "For security, please log out, log in again, then retry."
   };
-  return map[e && e.code] || (e && e.message) || "Something went wrong.";
+  return _0x1d283b[e && e['\u0063\u006F\u0064\u0065']] || e && e['\u006D\u0065\u0073\u0073\u0061\u0067\u0065'] || "Something went wrong.";
 }
-
-function chatIdFor(a, b) { return [a, b].sort().join("_"); }
-
+function chatIdFor(a, b) {
+  return [a, b]['\u0073\u006F\u0072\u0074']()['\u006A\u006F\u0069\u006E']("\u005F");
+}
 function guessCountry() {
   try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    const map = { "Africa/Nairobi": "KE", "Africa/Kampala": "UG", "Africa/Dar_es_Salaam": "TZ", "Africa/Kigali": "RW",
-      "Africa/Lagos": "NG", "Africa/Accra": "GH", "Africa/Johannesburg": "ZA", "Europe/London": "GB",
-      "Europe/Berlin": "DE", "Europe/Paris": "FR", "America/New_York": "US", "America/Chicago": "US",
-      "America/Los_Angeles": "US", "America/Toronto": "CA", "Asia/Tokyo": "JP", "Australia/Sydney": "AU" };
-    return map[tz] || "";
-  } catch (e) { return ""; }
+    const _0xbf67cc = Intl['\u0044\u0061\u0074\u0065\u0054\u0069\u006D\u0065\u0046\u006F\u0072\u006D\u0061\u0074']()['\u0072\u0065\u0073\u006F\u006C\u0076\u0065\u0064\u004F\u0070\u0074\u0069\u006F\u006E\u0073']()['\u0074\u0069\u006D\u0065\u005A\u006F\u006E\u0065'] || "";
+    const _0x2c_0x55e = {
+      "\u0041\u0066\u0072\u0069\u0063\u0061\u002F\u004E\u0061\u0069\u0072\u006F\u0062\u0069": "\u004B\u0045",
+      "Africa/Kampala": "UG",
+      "Africa/Dar_es_Salaam": "\u0054\u005A",
+      "\u0041\u0066\u0072\u0069\u0063\u0061\u002F\u004B\u0069\u0067\u0061\u006C\u0069": "\u0052\u0057",
+      "Africa/Lagos": "\u004E\u0047",
+      "Africa/Accra": "\u0047\u0048",
+      "\u0041\u0066\u0072\u0069\u0063\u0061\u002F\u004A\u006F\u0068\u0061\u006E\u006E\u0065\u0073\u0062\u0075\u0072\u0067": "ZA",
+      "\u0045\u0075\u0072\u006F\u0070\u0065\u002F\u004C\u006F\u006E\u0064\u006F\u006E": "\u0047\u0042",
+      "Europe/Berlin": "\u0044\u0045",
+      "Europe/Paris": "\u0046\u0052",
+      "America/New_York": "\u0055\u0053",
+      "America/Chicago": "US",
+      "\u0041\u006D\u0065\u0072\u0069\u0063\u0061\u002F\u004C\u006F\u0073\u005F\u0041\u006E\u0067\u0065\u006C\u0065\u0073": "US",
+      "\u0041\u006D\u0065\u0072\u0069\u0063\u0061\u002F\u0054\u006F\u0072\u006F\u006E\u0074\u006F": "CA",
+      "Asia/Tokyo": "\u004A\u0050",
+      "\u0041\u0075\u0073\u0074\u0072\u0061\u006C\u0069\u0061\u002F\u0053\u0079\u0064\u006E\u0065\u0079": "\u0041\u0055"
+    };
+    return _0x2c_0x55e[_0xbf67cc] || "";
+  } catch (e) {
+    return "";
+  }
 }
-
-/* ---------- Theme (per-device convenience only) ---------- */
 function applyTheme() {
+  var _0x322d1f = (309102 ^ 309098) + (276969 ^ 276972);
   let t = null;
-  try { t = localStorage.getItem("amoriva-theme"); } catch (e) {}
-  if (t) document.documentElement.setAttribute("data-theme", t);
+  _0x322d1f = '\u0064\u0064\u0068\u0065\u0066\u006F';
+  try {
+    t = localStorage['\u0067\u0065\u0074\u0049\u0074\u0065\u006D']("\u0061\u006D\u006F\u0072\u0069\u0076\u0061\u002D\u0074\u0068\u0065\u006D\u0065");
+  } catch (e) {}
+  if (t) document['\u0064\u006F\u0063\u0075\u006D\u0065\u006E\u0074\u0045\u006C\u0065\u006D\u0065\u006E\u0074']['\u0073\u0065\u0074\u0041\u0074\u0074\u0072\u0069\u0062\u0075\u0074\u0065']("data-theme", t);
 }
 function toggleTheme() {
-  const cur = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", cur);
-  try { localStorage.setItem("amoriva-theme", cur); } catch (e) {}
-  return cur;
+  const _0x24ed = document['\u0064\u006F\u0063\u0075\u006D\u0065\u006E\u0074\u0045\u006C\u0065\u006D\u0065\u006E\u0074']['\u0067\u0065\u0074\u0041\u0074\u0074\u0072\u0069\u0062\u0075\u0074\u0065']("\u0064\u0061\u0074\u0061\u002D\u0074\u0068\u0065\u006D\u0065") === "\u0064\u0061\u0072\u006B" ? "\u006C\u0069\u0067\u0068\u0074" : "dark";
+  document['\u0064\u006F\u0063\u0075\u006D\u0065\u006E\u0074\u0045\u006C\u0065\u006D\u0065\u006E\u0074']['\u0073\u0065\u0074\u0041\u0074\u0074\u0072\u0069\u0062\u0075\u0074\u0065']("data-theme", _0x24ed);
+  try {
+    localStorage['\u0073\u0065\u0074\u0049\u0074\u0065\u006D']("\u0061\u006D\u006F\u0072\u0069\u0076\u0061\u002D\u0074\u0068\u0065\u006D\u0065", _0x24ed);
+  } catch (e) {}
+  return _0x24ed;
 }
 applyTheme();
-
-/* ---------- Auth guard + presence ---------- */
-let CURRENT = { user: null, profile: null };
-
-function requireAuth({ needProfile = true } = {}) {
-  return new Promise((resolve) => {
-    const off = auth.onAuthStateChanged(async (user) => {
-      off();
-      if (!user || user.isAnonymous) { location.replace("auth.html"); return; }
-      const snap = await ref("users/" + user.uid).once("value");
-      const profile = snap.val();
-      if (needProfile && (!profile || !profile.profileComplete)) { location.replace("setup.html"); return; }
-      CURRENT = { user, profile };
-      startPresence(user.uid);
-      if (!/call\.html$/.test(location.pathname)) listenForCalls(user.uid);
+let CURRENT = {
+  '\u0075\u0073\u0065\u0072': null,
+  "profile": null
+};
+function requireAuth({
+  '\u006E\u0065\u0065\u0064\u0050\u0072\u006F\u0066\u0069\u006C\u0065': needProfile = !![]
+} = {}) {
+  return new Promise(resolve => {
+    var _0xfdbab = (611477 ^ 611477) + (339992 ^ 339998);
+    const _0xd5567f = auth['\u006F\u006E\u0041\u0075\u0074\u0068\u0053\u0074\u0061\u0074\u0065\u0043\u0068\u0061\u006E\u0067\u0065\u0064'](async user => {
+      _0xd5567f();
+      if (!user || user['\u0069\u0073\u0041\u006E\u006F\u006E\u0079\u006D\u006F\u0075\u0073']) {
+        location['\u0072\u0065\u0070\u006C\u0061\u0063\u0065']("auth.html");
+        return;
+      }
+      const _0xb613g = await ref("\u0075\u0073\u0065\u0072\u0073\u002F" + user['\u0075\u0069\u0064'])['\u006F\u006E\u0063\u0065']("\u0076\u0061\u006C\u0075\u0065");
+      const _0x70e1d = _0xb613g['\u0076\u0061\u006C']();
+      if (needProfile && (!_0x70e1d || !_0x70e1d['\u0070\u0072\u006F\u0066\u0069\u006C\u0065\u0043\u006F\u006D\u0070\u006C\u0065\u0074\u0065'])) {
+        location['\u0072\u0065\u0070\u006C\u0061\u0063\u0065']("\u0073\u0065\u0074\u0075\u0070\u002E\u0068\u0074\u006D\u006C");
+        return;
+      }
+      CURRENT = {
+        '\u0075\u0073\u0065\u0072': user,
+        '\u0070\u0072\u006F\u0066\u0069\u006C\u0065': _0x70e1d
+      };
+      startPresence(user['\u0075\u0069\u0064']);
+      if (!new RegExp("call\\.html$", "")['\u0074\u0065\u0073\u0074'](location['\u0070\u0061\u0074\u0068\u006E\u0061\u006D\u0065'])) listenForCalls(user['\u0075\u0069\u0064']);
       resolve(CURRENT);
     });
+    _0xfdbab = (920196 ^ 920199) + (673372 ^ 673375);
   });
 }
-
 function startPresence(uid) {
-  const statusRef = ref("status/" + uid);
-  const seenRef = ref("users/" + uid + "/lastSeen");
-  db.ref(".info/connected").on("value", (s) => {
-    if (s.val() !== true) return;
-    statusRef.onDisconnect().set({ state: "offline", at: TS }).then(() => {
-      statusRef.set({ state: "online", at: TS });
-      seenRef.set(TS);
-      seenRef.onDisconnect().set(TS);
+  var _0x2305gg = (543189 ^ 543185) + (709241 ^ 709241);
+  const _0xc981e = ref("\u0073\u0074\u0061\u0074\u0075\u0073\u002F" + uid);
+  _0x2305gg = (737660 ^ 737653) + (178986 ^ 178986);
+  const _0xe71ea = ref("users/" + uid + "/lastSeen");
+  db['\u0072\u0065\u0066']("\u002E\u0069\u006E\u0066\u006F\u002F\u0063\u006F\u006E\u006E\u0065\u0063\u0074\u0065\u0064")['\u006F\u006E']("\u0076\u0061\u006C\u0075\u0065", s => {
+    if (s['\u0076\u0061\u006C']() !== !![]) return;
+    _0xc981e['\u006F\u006E\u0044\u0069\u0073\u0063\u006F\u006E\u006E\u0065\u0063\u0074']()['\u0073\u0065\u0074']({
+      '\u0073\u0074\u0061\u0074\u0065': "\u006F\u0066\u0066\u006C\u0069\u006E\u0065",
+      '\u0061\u0074': TS
+    })['\u0074\u0068\u0065\u006E'](() => {
+      _0xc981e['\u0073\u0065\u0074']({
+        "state": "\u006F\u006E\u006C\u0069\u006E\u0065",
+        '\u0061\u0074': TS
+      });
+      _0xe71ea['\u0073\u0065\u0074'](TS);
+      _0xe71ea['\u006F\u006E\u0044\u0069\u0073\u0063\u006F\u006E\u006E\u0065\u0063\u0074']()['\u0073\u0065\u0074'](TS);
     });
   });
 }
-
 async function logout() {
-  const u = auth.currentUser;
+  const u = auth['\u0063\u0075\u0072\u0072\u0065\u006E\u0074\u0055\u0073\u0065\u0072'];
   if (u) {
-    try { await ref("status/" + u.uid).set({ state: "offline", at: TS }); } catch (e) {}
+    try {
+      await ref("\u0073\u0074\u0061\u0074\u0075\u0073\u002F" + u['\u0075\u0069\u0064'])['\u0073\u0065\u0074']({
+        "state": "offline",
+        '\u0061\u0074': TS
+      });
+    } catch (e) {}
   }
-  await auth.signOut();
-  location.replace("index.html");
+  await auth['\u0073\u0069\u0067\u006E\u004F\u0075\u0074']();
+  location['\u0072\u0065\u0070\u006C\u0061\u0063\u0065']("index.html");
 }
-
-/* ---------- Incoming video calls (app-wide ring) ---------- */
+var _0x58b9ce = (424098 ^ 424103) + (914974 ^ 914969);
 let _incomingShown = null;
+_0x58b9ce = (464217 ^ 464218) + (917424 ^ 917424);
 function listenForCalls(uid) {
-  ref("ring/" + uid).on("value", (s) => {
-    const v = s.val();
-    if (!v || !v.callId) { hideIncoming(); return; }
-    if (_incomingShown === v.callId) return;
-    ref("calls/" + v.callId + "/status").once("value").then((st) => {
-      if (st.val() === "ringing") showIncoming(v, uid);
+  ref("ring/" + uid)['\u006F\u006E']("\u0076\u0061\u006C\u0075\u0065", s => {
+    let _0x5aec;
+    const v = s['\u0076\u0061\u006C']();
+    _0x5aec = 733005 ^ 733005;
+    if (!v || !v['\u0063\u0061\u006C\u006C\u0049\u0064']) {
+      hideIncoming();
+      return;
+    }
+    if (_incomingShown === v['\u0063\u0061\u006C\u006C\u0049\u0064']) return;
+    ref("calls/" + v['\u0063\u0061\u006C\u006C\u0049\u0064'] + "\u002F\u0073\u0074\u0061\u0074\u0075\u0073")['\u006F\u006E\u0063\u0065']("\u0076\u0061\u006C\u0075\u0065")['\u0074\u0068\u0065\u006E'](st => {
+      if (st['\u0076\u0061\u006C']() === "ringing") showIncoming(v, uid);
     });
   });
 }
 function showIncoming(v, uid) {
-  _incomingShown = v.callId;
-  let el = document.getElementById("incomingCall");
-  if (!el) { el = document.createElement("div"); el.id = "incomingCall"; document.body.appendChild(el); }
-  el.setAttribute("style", "position:fixed;inset:0;z-index:999;background:rgba(6,30,32,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;text-align:center;padding:24px");
-  el.innerHTML = `
+  _incomingShown = v['\u0063\u0061\u006C\u006C\u0049\u0064'];
+  var _0x23d88f = (959177 ^ 959178) + (909239 ^ 909246);
+  let _0x89d26f = document['\u0067\u0065\u0074\u0045\u006C\u0065\u006D\u0065\u006E\u0074\u0042\u0079\u0049\u0064']("incomingCall");
+  _0x23d88f = 478644 ^ 478653;
+  if (!_0x89d26f) {
+    _0x89d26f = document['\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006C\u0065\u006D\u0065\u006E\u0074']("\u0064\u0069\u0076");
+    _0x89d26f['\u0069\u0064'] = "\u0069\u006E\u0063\u006F\u006D\u0069\u006E\u0067\u0043\u0061\u006C\u006C";
+    document['\u0062\u006F\u0064\u0079']['\u0061\u0070\u0070\u0065\u006E\u0064\u0043\u0068\u0069\u006C\u0064'](_0x89d26f);
+  }
+  _0x89d26f['\u0073\u0065\u0074\u0041\u0074\u0074\u0072\u0069\u0062\u0075\u0074\u0065']("style", "position:fixed;inset:0;z-index:999;background:rgba(6,30,32,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;text-align:center;padding:24px");
+  _0x89d26f['\u0069\u006E\u006E\u0065\u0072\u0048\u0054\u004D\u004C'] = `
     <div style="font-size:3rem">📹</div>
-    <div style="font-size:1.3rem;font-weight:800">${esc(v.callerName || "Someone")}</div>
+    <div style="font-size:1.3rem;font-weight:800">${esc(v['\u0063\u0061\u006C\u006C\u0065\u0072\u004E\u0061\u006D\u0065'] || "Someone")}</div>
     <div style="opacity:.8">is video-calling you…</div>
     <div style="display:flex;gap:16px;margin-top:10px">
       <button id="icDecline" style="background:#d64545;color:#fff;border:0;border-radius:999px;padding:14px 26px;font-weight:700;font-size:1rem;cursor:pointer">Decline</button>
       <button id="icAccept" style="background:#22a55a;color:#fff;border:0;border-radius:999px;padding:14px 26px;font-weight:700;font-size:1rem;cursor:pointer">Accept</button>
     </div>`;
-  document.getElementById("icAccept").onclick = () => { location.href = "call.html?id=" + encodeURIComponent(v.callId) + "&role=callee"; };
-  document.getElementById("icDecline").onclick = async () => {
-    try { await ref("calls/" + v.callId + "/status").set("declined"); await ref("ring/" + uid).remove(); } catch (e) {}
+  document['\u0067\u0065\u0074\u0045\u006C\u0065\u006D\u0065\u006E\u0074\u0042\u0079\u0049\u0064']("icAccept")['\u006F\u006E\u0063\u006C\u0069\u0063\u006B'] = () => {
+    location['\u0068\u0072\u0065\u0066'] = "\u0063\u0061\u006C\u006C\u002E\u0068\u0074\u006D\u006C\u003F\u0069\u0064\u003D" + encodeURIComponent(v['\u0063\u0061\u006C\u006C\u0049\u0064']) + "\u0026\u0072\u006F\u006C\u0065\u003D\u0063\u0061\u006C\u006C\u0065\u0065";
+  };
+  document['\u0067\u0065\u0074\u0045\u006C\u0065\u006D\u0065\u006E\u0074\u0042\u0079\u0049\u0064']("icDecline")['\u006F\u006E\u0063\u006C\u0069\u0063\u006B'] = async () => {
+    try {
+      await ref("calls/" + v['\u0063\u0061\u006C\u006C\u0049\u0064'] + "/status")['\u0073\u0065\u0074']("\u0064\u0065\u0063\u006C\u0069\u006E\u0065\u0064");
+      await ref("\u0072\u0069\u006E\u0067\u002F" + uid)['\u0072\u0065\u006D\u006F\u0076\u0065']();
+    } catch (e) {}
     hideIncoming();
   };
-  try { navigator.vibrate && navigator.vibrate([400, 200, 400, 200, 400]); } catch (e) {}
+  try {
+    navigator['\u0076\u0069\u0062\u0072\u0061\u0074\u0065'] && navigator['\u0076\u0069\u0062\u0072\u0061\u0074\u0065']([573267 ^ 573123, 304402 ^ 304602, 147164 ^ 147276, 918168 ^ 918096, 342611 ^ 342979]);
+  } catch (e) {}
 }
 function hideIncoming() {
   _incomingShown = null;
-  const el = document.getElementById("incomingCall"); if (el) el.remove();
-  try { navigator.vibrate && navigator.vibrate(0); } catch (e) {}
+  const _0xf_0x06b = document['\u0067\u0065\u0074\u0045\u006C\u0065\u006D\u0065\u006E\u0074\u0042\u0079\u0049\u0064']("\u0069\u006E\u0063\u006F\u006D\u0069\u006E\u0067\u0043\u0061\u006C\u006C");
+  if (_0xf_0x06b) _0xf_0x06b['\u0072\u0065\u006D\u006F\u0076\u0065']();
+  try {
+    navigator['\u0076\u0069\u0062\u0072\u0061\u0074\u0065'] && navigator['\u0076\u0069\u0062\u0072\u0061\u0074\u0065'](427304 ^ 427304);
+  } catch (e) {}
 }
-
-/* ---------- Blocks ---------- */
 async function blockedEitherWay(me, other) {
-  const [a, b] = await Promise.all([
-    ref(`blocks/${me}/${other}`).once("value"),
-    ref(`blocks/${other}/${me}`).once("value")
-  ]);
-  return { iBlocked: a.exists(), theyBlocked: b.exists() };
+  const [a, b] = await Promise['\u0061\u006C\u006C']([ref(`blocks/${me}/${other}`)['\u006F\u006E\u0063\u0065']("\u0076\u0061\u006C\u0075\u0065"), ref(`blocks/${other}/${me}`)['\u006F\u006E\u0063\u0065']("value")]);
+  return {
+    "iBlocked": a['\u0065\u0078\u0069\u0073\u0074\u0073'](),
+    '\u0074\u0068\u0065\u0079\u0042\u006C\u006F\u0063\u006B\u0065\u0064': b['\u0065\u0078\u0069\u0073\u0074\u0073']()
+  };
 }
-
-/* ---------- Bottom nav ---------- */
 function renderNav(active) {
-  const nav = document.createElement("nav");
-  nav.className = "nav";
-  nav.innerHTML = `<div class="inner">
-    <a href="members.html" class="${active === "members" ? "on" : ""}"><span class="ic">🌍</span>Members</a>
-    <a href="feed.html" class="${active === "feed" ? "on" : ""}"><span class="ic">📸</span>Feed</a>
+  var _0xc29e = (169816 ^ 169822) + (602841 ^ 602842);
+  const _0xb_0xd8d = document['\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006C\u0065\u006D\u0065\u006E\u0074']("\u006E\u0061\u0076");
+  _0xc29e = "ijihnj";
+  _0xb_0xd8d['\u0063\u006C\u0061\u0073\u0073\u004E\u0061\u006D\u0065'] = "\u006E\u0061\u0076";
+  _0xb_0xd8d['\u0069\u006E\u006E\u0065\u0072\u0048\u0054\u004D\u004C'] = `<div class="inner">
+    <a href="members.html" class="${active === "\u006D\u0065\u006D\u0062\u0065\u0072\u0073" ? "\u006F\u006E" : ""}"><span class="ic">🌍</span>Members</a>
+    <a href="feed.html" class="${active === "\u0066\u0065\u0065\u0064" ? "\u006F\u006E" : ""}"><span class="ic">📸</span>Feed</a>
     <button class="nav-fab" id="redeemFab"><span class="ic">🎁</span>Redeem</button>
-    <a href="chats.html" class="${active === "chats" ? "on" : ""}"><span class="ic">💬</span>Chats<span class="badge hidden" id="navUnread"></span></a>
-    <a href="profile.html" class="${active === "profile" ? "on" : ""}"><span class="ic">👤</span>Profile</a>
+    <a href="chats.html" class="${active === "\u0063\u0068\u0061\u0074\u0073" ? "on" : ""}"><span class="ic">💬</span>Chats<span class="badge hidden" id="navUnread"></span></a>
+    <a href="profile.html" class="${active === "\u0070\u0072\u006F\u0066\u0069\u006C\u0065" ? "\u006F\u006E" : ""}"><span class="ic">👤</span>Profile</a>
   </div>`;
-  document.body.appendChild(nav);
+  document['\u0062\u006F\u0064\u0079']['\u0061\u0070\u0070\u0065\u006E\u0064\u0043\u0068\u0069\u006C\u0064'](_0xb_0xd8d);
   initRedeem();
-  if (CURRENT.user) {
-    ref("userChats/" + CURRENT.user.uid).on("value", (s) => {
-      let n = 0;
-      s.forEach((c) => { n += (c.val().unread || 0); });
-      const b = $("#navUnread");
-      b.textContent = n > 99 ? "99+" : n;
-      b.classList.toggle("hidden", n === 0);
+  if (CURRENT['\u0075\u0073\u0065\u0072']) {
+    ref("\u0075\u0073\u0065\u0072\u0043\u0068\u0061\u0074\u0073\u002F" + CURRENT['\u0075\u0073\u0065\u0072']['\u0075\u0069\u0064'])['\u006F\u006E']("\u0076\u0061\u006C\u0075\u0065", s => {
+      var _0xfebb5b = (762661 ^ 762659) + (322432 ^ 322439);
+      let n = 351420 ^ 351420;
+      _0xfebb5b = (227149 ^ 227140) + (314164 ^ 314164);
+      s['\u0066\u006F\u0072\u0045\u0061\u0063\u0068'](c => {
+        n += c['\u0076\u0061\u006C']()['\u0075\u006E\u0072\u0065\u0061\u0064'] || 123809 ^ 123809;
+      });
+      var _0x0f85a = (736055 ^ 736054) + (514677 ^ 514679);
+      const b = $("\u0023\u006E\u0061\u0076\u0055\u006E\u0072\u0065\u0061\u0064");
+      _0x0f85a = 258146 ^ 258148;
+      b['\u0074\u0065\u0078\u0074\u0043\u006F\u006E\u0074\u0065\u006E\u0074'] = n > (622603 ^ 622696) ? "99+" : n;
+      b['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0074\u006F\u0067\u0067\u006C\u0065']("hidden", n === (121253 ^ 121253));
     });
   }
 }
-
-// Redeem points popup (shared across pages via the bottom nav).
 function initRedeem() {
-  const uid = CURRENT.user && CURRENT.user.uid;
-  if (!uid) return;
-  const sheet = document.createElement("div");
-  sheet.className = "sheet-bg";
-  sheet.id = "redeemSheet";
-  sheet.innerHTML = `<div class="sheet">
+  const _0x66a0ba = CURRENT['\u0075\u0073\u0065\u0072'] && CURRENT['\u0075\u0073\u0065\u0072']['\u0075\u0069\u0064'];
+  if (!_0x66a0ba) return;
+  var _0x2da41f = (468603 ^ 468606) + (940614 ^ 940612);
+  const _0x3eeac = document['\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006C\u0065\u006D\u0065\u006E\u0074']("div");
+  _0x2da41f = (174593 ^ 174594) + (753165 ^ 753164);
+  _0x3eeac['\u0063\u006C\u0061\u0073\u0073\u004E\u0061\u006D\u0065'] = "sheet-bg";
+  _0x3eeac['\u0069\u0064'] = "redeemSheet";
+  _0x3eeac['\u0069\u006E\u006E\u0065\u0072\u0048\u0054\u004D\u004C'] = `<div class="sheet">
     <div class="invite-hero" style="background:linear-gradient(135deg,#22c55e,#15803d)">
       <div class="ih-ic">🎁</div><h3>Redeem your points</h3>
       <p>Move the points you've earned into your redeem balance.</p>
@@ -411,62 +465,89 @@ function initRedeem() {
       <button class="btn btn-outline" data-close>Close</button>
     </div>
   </div>`;
-  document.body.appendChild(sheet);
-
-  let avail = 0, redeemed = 0;
-  const paint = () => { $("#rdAvail").textContent = fmtPoints(avail); $("#rdRedeemed").textContent = fmtPoints(redeemed); };
-  ref("users/" + uid + "/points").on("value", (s) => { avail = Number(s.val()) || 0; paint(); });
-  ref("users/" + uid + "/redeemedPoints").on("value", (s) => { redeemed = Number(s.val()) || 0; paint(); });
-
-  $("#redeemFab").onclick = () => sheet.classList.add("show");
-  sheet.onclick = (e) => { if (e.target === sheet) sheet.classList.remove("show"); };
-  $$("[data-close]", sheet).forEach((b) => b.onclick = () => sheet.classList.remove("show"));
-  $("#rdBtn").onclick = async () => {
-    if (avail <= 0) { toast("You don't have points to redeem yet. Reply to members to earn points.", true); return; }
-    const amt = avail;
+  document['\u0062\u006F\u0064\u0079']['\u0061\u0070\u0070\u0065\u006E\u0064\u0043\u0068\u0069\u006C\u0064'](_0x3eeac);
+  let _0x58gg1a = 469152 ^ 469152,
+    _0x375d = 848989 ^ 848989;
+  const _0xbf3e6e = () => {
+    $("\u0023\u0072\u0064\u0041\u0076\u0061\u0069\u006C")['\u0074\u0065\u0078\u0074\u0043\u006F\u006E\u0074\u0065\u006E\u0074'] = fmtPoints(_0x58gg1a);
+    $("\u0023\u0072\u0064\u0052\u0065\u0064\u0065\u0065\u006D\u0065\u0064")['\u0074\u0065\u0078\u0074\u0043\u006F\u006E\u0074\u0065\u006E\u0074'] = fmtPoints(_0x375d);
+  };
+  ref("users/" + _0x66a0ba + "\u002F\u0070\u006F\u0069\u006E\u0074\u0073")['\u006F\u006E']("value", s => {
+    _0x58gg1a = Number(s['\u0076\u0061\u006C']()) || 755329 ^ 755329;
+    _0xbf3e6e();
+  });
+  ref("\u0075\u0073\u0065\u0072\u0073\u002F" + _0x66a0ba + "\u002F\u0072\u0065\u0064\u0065\u0065\u006D\u0065\u0064\u0050\u006F\u0069\u006E\u0074\u0073")['\u006F\u006E']("\u0076\u0061\u006C\u0075\u0065", s => {
+    _0x375d = Number(s['\u0076\u0061\u006C']()) || 282262 ^ 282262;
+    _0xbf3e6e();
+  });
+  $("\u0023\u0072\u0065\u0064\u0065\u0065\u006D\u0046\u0061\u0062")['\u006F\u006E\u0063\u006C\u0069\u0063\u006B'] = () => _0x3eeac['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0061\u0064\u0064']("show");
+  _0x3eeac['\u006F\u006E\u0063\u006C\u0069\u0063\u006B'] = e => {
+    if (e['\u0074\u0061\u0072\u0067\u0065\u0074'] === _0x3eeac) _0x3eeac['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0072\u0065\u006D\u006F\u0076\u0065']("\u0073\u0068\u006F\u0077");
+  };
+  $$("[data-close]", _0x3eeac)['\u0066\u006F\u0072\u0045\u0061\u0063\u0068'](b => b['\u006F\u006E\u0063\u006C\u0069\u0063\u006B'] = () => _0x3eeac['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0072\u0065\u006D\u006F\u0076\u0065']("\u0073\u0068\u006F\u0077"));
+  $("#rdBtn")['\u006F\u006E\u0063\u006C\u0069\u0063\u006B'] = async () => {
+    if (_0x58gg1a <= (823385 ^ 823385)) {
+      toast("\u0059\u006F\u0075\u0020\u0064\u006F\u006E\u0027\u0074\u0020\u0068\u0061\u0076\u0065\u0020\u0070\u006F\u0069\u006E\u0074\u0073\u0020\u0074\u006F\u0020\u0072\u0065\u0064\u0065\u0065\u006D\u0020\u0079\u0065\u0074\u002E\u0020\u0052\u0065\u0070\u006C\u0079\u0020\u0074\u006F\u0020\u006D\u0065\u006D\u0062\u0065\u0072\u0073\u0020\u0074\u006F\u0020\u0065\u0061\u0072\u006E\u0020\u0070\u006F\u0069\u006E\u0074\u0073\u002E", !![]);
+      return;
+    }
+    const _0xc7e14f = _0x58gg1a;
     try {
-      await db.ref(ROOT + "/users/" + uid).update({
-        points: 0,
-        redeemedPoints: firebase.database.ServerValue.increment(amt)
+      await db['\u0072\u0065\u0066'](ROOT + "/users/" + _0x66a0ba)['\u0075\u0070\u0064\u0061\u0074\u0065']({
+        '\u0070\u006F\u0069\u006E\u0074\u0073': 0,
+        '\u0072\u0065\u0064\u0065\u0065\u006D\u0065\u0064\u0050\u006F\u0069\u006E\u0074\u0073': firebase['\u0064\u0061\u0074\u0061\u0062\u0061\u0073\u0065']['\u0053\u0065\u0072\u0076\u0065\u0072\u0056\u0061\u006C\u0075\u0065']['\u0069\u006E\u0063\u0072\u0065\u006D\u0065\u006E\u0074'](_0xc7e14f)
       });
-      toast("Redeemed " + fmtPoints(amt) + " points! 🎁");
-    } catch (e) { toast("Couldn't redeem right now.", true); }
+      toast("Redeemed " + fmtPoints(_0xc7e14f) + " points! 🎁");
+    } catch (e) {
+      toast("Couldn't redeem right now.", !![]);
+    }
   };
 }
-
-/* ---------- Ads (AdSense) ---------- */
 function renderAd(el) {
   if (!el) return;
-  if (!ADS.client || !ADS.slot) { el.remove(); return; }
-  if (!document.getElementById("adsbygoogle-js")) {
-    const s = document.createElement("script");
-    s.id = "adsbygoogle-js";
-    s.async = true;
-    s.crossOrigin = "anonymous";
-    s.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" + ADS.client;
-    document.head.appendChild(s);
+  if (!ADS['\u0063\u006C\u0069\u0065\u006E\u0074'] || !ADS['\u0073\u006C\u006F\u0074']) {
+    el['\u0072\u0065\u006D\u006F\u0076\u0065']();
+    return;
   }
-  el.classList.add("ad-slot");
-  el.innerHTML = `<div class="ad-label">Sponsored</div>
-    <ins class="adsbygoogle" style="display:block" data-ad-client="${ADS.client}" data-ad-slot="${ADS.slot}"
+  if (!document['\u0067\u0065\u0074\u0045\u006C\u0065\u006D\u0065\u006E\u0074\u0042\u0079\u0049\u0064']("adsbygoogle-js")) {
+    const s = document['\u0063\u0072\u0065\u0061\u0074\u0065\u0045\u006C\u0065\u006D\u0065\u006E\u0074']("\u0073\u0063\u0072\u0069\u0070\u0074");
+    s['\u0069\u0064'] = "adsbygoogle-js";
+    s['\u0061\u0073\u0079\u006E\u0063'] = !![];
+    s['\u0063\u0072\u006F\u0073\u0073\u004F\u0072\u0069\u0067\u0069\u006E'] = "anonymous";
+    s['\u0073\u0072\u0063'] = "\u0068\u0074\u0074\u0070\u0073\u003A\u002F\u002F\u0070\u0061\u0067\u0065\u0061\u0064\u0032\u002E\u0067\u006F\u006F\u0067\u006C\u0065\u0073\u0079\u006E\u0064\u0069\u0063\u0061\u0074\u0069\u006F\u006E\u002E\u0063\u006F\u006D\u002F\u0070\u0061\u0067\u0065\u0061\u0064\u002F\u006A\u0073\u002F\u0061\u0064\u0073\u0062\u0079\u0067\u006F\u006F\u0067\u006C\u0065\u002E\u006A\u0073\u003F\u0063\u006C\u0069\u0065\u006E\u0074\u003D" + ADS['\u0063\u006C\u0069\u0065\u006E\u0074'];
+    document['\u0068\u0065\u0061\u0064']['\u0061\u0070\u0070\u0065\u006E\u0064\u0043\u0068\u0069\u006C\u0064'](s);
+  }
+  el['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0061\u0064\u0064']("ad-slot");
+  el['\u0069\u006E\u006E\u0065\u0072\u0048\u0054\u004D\u004C'] = `<div class="ad-label">Sponsored</div>
+    <ins class="adsbygoogle" style="display:block" data-ad-client="${ADS['\u0063\u006C\u0069\u0065\u006E\u0074']}" data-ad-slot="${ADS['\u0073\u006C\u006F\u0074']}"
       data-ad-format="auto" data-full-width-responsive="true"></ins>`;
-  try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+  try {
+    (window['\u0061\u0064\u0073\u0062\u0079\u0067\u006F\u006F\u0067\u006C\u0065'] = window['\u0061\u0064\u0073\u0062\u0079\u0067\u006F\u006F\u0067\u006C\u0065'] || [])['\u0070\u0075\u0073\u0068']({});
+  } catch (e) {}
 }
-
-/* ---------- Chip pickers ---------- */
-function chipPicker(container, options, selected = [], max = 99) {
-  const set = new Set(selected);
-  container.innerHTML = options.map((o) =>
-    `<button type="button" class="chip ${set.has(o) ? "on" : ""}" data-v="${esc(o)}">${esc(o)}</button>`).join("");
-  container.addEventListener("click", (e) => {
-    const b = e.target.closest(".chip");
+function chipPicker(container, options, selected = [], max = 550070 ^ 550101) {
+  var _0xe7aa4d = (260062 ^ 260054) + (562411 ^ 562415);
+  const _0xdf_0x4ea = new Set(selected);
+  _0xe7aa4d = (412937 ^ 412939) + (339231 ^ 339224);
+  container['\u0069\u006E\u006E\u0065\u0072\u0048\u0054\u004D\u004C'] = options['\u006D\u0061\u0070'](o => `<button type="button" class="chip ${_0xdf_0x4ea['\u0068\u0061\u0073'](o) ? "\u006F\u006E" : ""}" data-v="${esc(o)}">${esc(o)}</button>`)['\u006A\u006F\u0069\u006E']("");
+  container['\u0061\u0064\u0064\u0045\u0076\u0065\u006E\u0074\u004C\u0069\u0073\u0074\u0065\u006E\u0065\u0072']("\u0063\u006C\u0069\u0063\u006B", e => {
+    let _0xb6529d;
+    const b = e['\u0074\u0061\u0072\u0067\u0065\u0074']['\u0063\u006C\u006F\u0073\u0065\u0073\u0074']("\u002E\u0063\u0068\u0069\u0070");
+    _0xb6529d = (464176 ^ 464181) + (703864 ^ 703857);
     if (!b) return;
-    const v = b.dataset.v;
-    if (set.has(v)) { set.delete(v); b.classList.remove("on"); }
-    else {
-      if (set.size >= max) { toast(`You can pick up to ${max}`); return; }
-      set.add(v); b.classList.add("on");
+    let _0x3_0x011;
+    const v = b['\u0064\u0061\u0074\u0061\u0073\u0065\u0074']['\u0076'];
+    _0x3_0x011 = "kobhbj";
+    if (_0xdf_0x4ea['\u0068\u0061\u0073'](v)) {
+      _0xdf_0x4ea['\u0064\u0065\u006C\u0065\u0074\u0065'](v);
+      b['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0072\u0065\u006D\u006F\u0076\u0065']("\u006F\u006E");
+    } else {
+      if (_0xdf_0x4ea['\u0073\u0069\u007A\u0065'] >= max) {
+        toast(`You can pick up to ${max}`);
+        return;
+      }
+      _0xdf_0x4ea['\u0061\u0064\u0064'](v);
+      b['\u0063\u006C\u0061\u0073\u0073\u004C\u0069\u0073\u0074']['\u0061\u0064\u0064']("\u006F\u006E");
     }
   });
-  return () => [...set];
+  return () => [..._0xdf_0x4ea];
 }
