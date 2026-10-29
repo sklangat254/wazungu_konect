@@ -127,9 +127,16 @@
   const pseudoSeed = params.get("pseudo");
   const pseudoMode = pseudoSeed !== null;
   const hubMode = params.get("hub") === "1"; // Nairobi Expat Hub: needs a SEPARATE friend invite.
-  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, invited = false, freeUsed = false, hubUnlocked = false, lastDay = "", lastSend = 0, msgCount = 0;
+  let myUid, me, other, cid, iBlocked = false, theyBlocked = false, invited = false, freeUsed = false, hubUnlocked = false, redeemedPoints = 0, lastDay = "", lastSend = 0, msgCount = 0;
   let pseudoSend = () => {};
   function requestUnlock() { open("inviteSheet"); }
+
+  // Video calls need at least 20 redeemed points, OR the user has invited a friend.
+  function canCall() { return redeemedPoints >= 20 || invited; }
+  function denyCall() {
+    toast("Video calls need 20 redeemed points or a friend invite.", true);
+    open("inviteSheet");
+  }
 
   // Normal chats: one free message, then invite a friend. Expat-hub chats: a separate friend
   // invite is required up front (invite a DIFFERENT friend than the one for normal chats).
@@ -159,6 +166,7 @@
     ref("users/" + myUid + "/points").on("value", (s) => {
       const el = $("#ptsChip"); if (el) el.textContent = "⭐ " + fmtPoints(s.val());
     });
+    ref("users/" + myUid + "/redeemedPoints").on("value", (s) => { redeemedPoints = Number(s.val()) || 0; });
   }
   function awardReplyPoints() {
     const amt = randomPoints();
@@ -341,6 +349,7 @@
 
   $("#callBtn").onclick = async () => {
     if (!other || iBlocked || theyBlocked) { toast("You can't call this member.", true); return; }
+    if (!canCall()) { denyCall(); return; }
     const callId = ref("calls").push().key;
     try {
       await ref("calls/" + callId).set({
@@ -439,7 +448,7 @@
     // Video call is enabled on demo accounts: it opens the call screen (the user sees their own
     // camera), then shows that the member is busy / has restricted video. Invite is required first.
     $("#callBtn").onclick = () => {
-      if (hubMode ? !hubUnlocked : !invited) { requestUnlock(); return; }
+      if (!canCall()) { denyCall(); return; }
       location.href = "call.html?pseudo=" + encodeURIComponent(seed) + (hubMode ? "&hub=1" : "") +
         "&pn=" + encodeURIComponent(name) + "&pc=" + encodeURIComponent(country) + "&pp=" + encodeURIComponent(photo);
     };
