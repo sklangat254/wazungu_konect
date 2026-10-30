@@ -423,7 +423,7 @@ function initRedeem() {
   sheet.id = "redeemSheet";
   sheet.innerHTML = `<div class="sheet">
     <div class="invite-hero" id="rdHero">
-      <div class="ih-ic">🎁</div><h3 id="rdHeroTitle">Invite to redeem</h3>
+      <div class="ih-ic">💵</div><h3 id="rdHeroTitle">Invite to redeem</h3>
       <p id="rdHeroText">Invite one friend to unlock redeeming your points.</p>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:16px">
