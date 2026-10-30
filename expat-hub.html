@@ -28,9 +28,9 @@
     <p>International members from the USA, Canada, UK and Australia around Nairobi — Westlands, Karen, Gigiri, Kilimani, Lavington. Each profile shows dual flags (Kenya + origin) and their Nairobi base.</p>
   </div>
 
-  <div class="card" style="border:1px dashed var(--border)">
-    <p class="small" style="margin:0"><b>Heads up:</b> these are clearly-labelled <b>example (pseudo)</b> profiles that preview how the hub will look. Tap <b>Message</b> to try a demo chat. To chat here you'll invite a <b>different</b> friend than the one for your normal chats.</p>
-  </div>
+  <!--div class="card" style="border:1px dashed var(--border)">
+    <p class="small" style="margin:0"><b>Heads up:</b> these are clearly-labelled <b>example ()</b> profiles that preview how the hub will look. Tap <b>Message</b> to try a demo chat. To chat here you'll invite a <b>different</b> friend than the one for your normal chats.</p>
+</div-->
 
   <div id="list"><div class="card"><div class="loader"></div></div></div>
 </div>
@@ -61,13 +61,12 @@
       <div class="info">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div class="name">${esc(a.name)} ${flag(a.origin)}+${flag("KE")}</div>
-          <span class="tag" style="background:#fde68a;color:#92400e;font-weight:800">PSEUDO</span>
+          <span class="tag" style="background:#fde68a;color:#92400e;font-weight:800">LIVE</span>
         </div>
         ${statusHTML}
         <div class="base">📍 Based in ${esc(a.area)}, Nairobi · ${esc(a.reason)}</div>
         <p class="bio">${esc(a.originLabel)} national, currently in Nairobi (${esc(a.reason).toLowerCase()}). Happy to chat about life in Kenya and back home.</p>
-        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn 0.40–1.00 pts per reply</span>
-        <div class="tag" style="margin-top:8px;background:var(--surface-2);color:var(--muted)">Example profile · tap Message for a demo chat</div>
+        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn $0.40 – $1.00 per reply</span>
         <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="${href}">💬 Message</a></div>
       </div>
     </div>`;

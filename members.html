@@ -63,26 +63,31 @@
     </div>
   </div>
 
+    <!-- Total points earned (shown just below the bell) -->
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:10px 4px 0">
+    <span class="small" style="color:var(--muted);font-weight:700">Amount earned</span>
+    <span class="pts-chip" id="ptsChip" style="background:#dcfce7;color:#15803d;font-size:.95rem;padding:7px 14px">$0.00</span>
+  </div>
   <!-- Notification dropdown -->
   <div class="notif-pop hidden" id="notifPop">
     <div class="nhead">Notifications</div>
-    <div class="notif-item"><div class="ni">📤</div><div><div class="nt">Invite friends</div><div class="nd">Invite a friend to unlock chatting and grow Amoriva.</div></div></div>
+    <div class="notif-item"><div class="ni">📤</div><div><div class="nt">Invite friends</div><div class="nd">Invite a friend to grow Amoriva.</div></div></div>
     <div class="notif-item"><div class="ni">✅</div><div><div class="nt">You're all set</div><div class="nd">Your account was created successfully. Welcome aboard!</div></div></div>
     <div class="notif-item"><div class="ni">🌍</div><div><div class="nt">Say hello</div><div class="nd">Enjoy interacting with members from around the world.</div></div></div>
   </div>
 
   <!-- Invite panel (auto-removes once the user has invited a friend) -->
-  <div class="invite-panel hidden" id="invitePanel">
-    <div class="ip-txt"><b>Invite a friend to start chatting</b><span>Chatting unlocks once you invite someone to Amoriva.</span></div>
-    <button class="btn-red" id="invitePanelBtn">Invite now</button>
+  <div class="invite-panel hidden" style="margin-top:16px" id="invitePanel">
+    <div class="ip-txt"><b>Activate your account</b><span>Your account is currently inactive, limiting your interactions. Activate your account to access all features.</span></div>
+    <button class="btn-red" id="invitePanelBtn">Activate now</button>
   </div>
 
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+  <div class="card" style="margin-top:16px">
+    <!--div style="display:flex;justify-content:space-between;align-items:center;gap:10px"-->
       <h1 style="margin:0">Find a language partner</h1>
-      <span class="pts-chip" id="ptsChip" style="background:var(--primary-soft);color:var(--primary)">⭐ 0.00</span>
-    </div>
-    <p class="muted small" style="margin:8px 0 14px">Real members, real-time status. Tap <b>Message</b> to start a conversation. You earn points for every reply you send.</p>
+      <!--span class="pts-chip" id="ptsChip" style="background:var(--primary-soft);color:var(--primary)">$0.00</span-->
+    <!--/div-->
+    <p class="muted small" style="margin:8px 0 14px">Build Meaningful Connections! Tap <b>Message</b> to start a conversation. You earn in dollars for every reply you send.</p>
     <input class="input" id="search" placeholder="Search by name, country, language or interest">
     <div class="scroll-x" id="filters" style="margin-top:12px">
       <button class="chip on" data-f="all">All</button>
@@ -102,9 +107,9 @@
       <span class="pill" style="background:var(--surface-2);color:var(--muted)">📍 Nairobi, Kenya</span>
     </div>
     <h2 style="margin:4px 0 8px;font-size:1.25rem">USA, Canada, UK &amp; Australia Foreigners — Working &amp; Based in Kenya</h2>
-    <p class="muted small" style="margin-bottom:14px">Connect with international members from the USA, Canada, UK and Australia based across Nairobi — Westlands, Karen, Gigiri, Kilimani, Lavington. Each profile shows dual flags (Kenya + origin) and their Nairobi base. <b>Example (pseudo) profiles</b> for now.</p>
+    <p class="muted small" style="margin-bottom:14px">Connect with international members from the USA, Canada, UK and Australia based across Nairobi — Westlands, Karen, Gigiri, Kilimani, Lavington. Each profile shows dual flags (Kenya + origin) and their  <b>Nairobi base.</b></p>
     <a class="btn btn-green" href="expat-hub.html" style="display:block;text-align:center;font-size:1.05rem;padding:16px">Open Nairobi Expat Hub →</a>
-    <p class="small center" style="color:#15803d;font-weight:800;margin-top:10px">⭐ Earn 0.40–1.00 points per reply · points, not cash</p>
+    <p class="small center" style="color:#15803d;font-weight:800;margin-top:10px">⭐ Earn $0.40 – $1.00 per reply.</p>
   </div>
 
   <div id="list"><div class="card"><div class="loader"></div></div></div>
@@ -113,11 +118,11 @@
 <!-- "Active Member" welcome popup, cycles above the bottom menu -->
 <div class="join-pop" id="joinPop">
   <button class="jclose" id="joinClose" aria-label="Close">×</button>
-  <div class="jtitle">ACTIVE MEMBER</div>
+  <div class="jtitle">WITHDRAWAL SUCCESSFUL</div>
   <div class="jrow">
-    <div class="jface">😊</div>
+    <div class="jface">💵</div>
     <div style="flex:1;min-width:0">
-      <div class="jname"><span id="joinName"></span><span id="joinFlag"></span><span class="jex hidden" id="joinEx">example</span></div>
+      <div class="jname"><span id="joinName"></span><span id="joinFlag"></span><span class="jex hidden" id="joinEx">Withdrew</span></div>
       <div class="jnum" id="joinNum"></div>
     </div>
     <div class="jlang"><span class="jlabel">lang</span><span class="jpill" id="joinLang"></span></div>
@@ -128,29 +133,28 @@
 <div class="sheet-bg" id="inviteSheet">
   <div class="sheet">
     <div class="invite-hero">
-      <div class="ih-ic">🎁</div>
-      <h3>Invite a friend</h3>
-      <p>Share your code — once a friend joins, you're set to chat freely.</p>
+      <div class="ih-ic">💵</div>
+      <h3>Activate Your Account</h3>
+      <p>Pay <span class="code" id="step5">KSh 155</span> ($1.19) once via M-Pesa Buy Goods to activate your account.</p>
     </div>
     <div class="inv-steps">
-      <div class="inv-step"><span class="sn">1</span> Copy your invite code</div>
-      <div class="inv-step"><span class="sn">2</span> Share it on WhatsApp, SMS or anywhere</div>
-      <div class="inv-step"><span class="sn">3</span> Your friend joins with your code</div>
-    </div>
-    <label class="inv-label">Your invite code</label>
-    <div class="code-display">
-      <input class="input" id="myCode" readonly>
+      <div class="inv-step"><span class="sn">1</span> Open M-Pesa menu on your mobile phone</div>
+      <div class="inv-step"><span class="sn">2</span> Go to lipa na M-PESA → Choose Buy Goods and Services</div>
+      <div class="inv-step"><span class="sn">3</span> Enter Till Number: <span class="code" id="myCode">9283776</span></div>
+      <div class="inv-step"><span class="sn">4</span> Enter Amount: <span class="code" id="step6">KSh 155</span></div>
+      <div class="inv-step"><span class="sn">5</span> Enter your M-Pesa PIN and complete transaction</div>
+      <div class="inv-step"><span class="sn">6</span> Copy and paste the full M-Pesa SMS confirmation message below to verify</div>
     </div>
     <div class="stack" style="margin-bottom:18px">
-      <button class="btn btn-green" id="shareCode">📤 Share invite</button>
-      <button class="btn btn-outline" id="copyCode">📋 Copy code</button>
+      <button class="btn btn-green" id="copyCode">📋 Copy Till Number</button>
+      <button class="btn btn-outline" id="shareCode" disabled style="display:none">📤 Share invite</button>
     </div>
-    <label class="inv-label">Were you invited? Paste the code here</label>
+    <label class="inv-label">Already paid? Paste the M-Pesa message here</label>
     <div class="field" style="margin-top:0">
-      <textarea class="input code-paste" id="inviteInput" placeholder="Paste your friend's Amoriva code here…"></textarea>
+      <textarea class="input code-paste" id="inviteInput" placeholder="Paste the M-Pesa confirmation message here…"></textarea>
     </div>
     <div class="stack">
-      <button class="btn btn-primary" id="unlockBtn">✅ Unlock chat</button>
+      <button class="btn btn-primary" id="unlockBtn">Verify SMS & Activate Account Now</button>
       <button class="btn btn-outline" data-close>Close</button>
     </div>
   </div>
@@ -161,20 +165,26 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="common.js"></script>
 <script>
+  let lastie;
+  const s4 = $("#step5");
+  const s5 = $("#step6");
   let me, myUid, users = {}, statuses = {}, blocked = {}, filter = "all";
 
   let hasInvited = false, joinTimer = null, joinIdx = 0;
 
   requireAuth().then(({ user, profile }) => {
     me = profile; myUid = user.uid;
+    lastie = sectionCode(myUid, "chat").slice(-3);
     renderNav("members");
     renderAd($("#ad1"));
-    $("#myCode").value = "Amoriva" + myUid.slice(0, 6).toUpperCase();
+    $("#myCode").textContent = "9283776";//sectionCode(myUid, "chat");
+    s4.textContent = "Ksh " + lastie;
+    s5.textContent = "Ksh " + lastie;
 
     ref("blocks/" + myUid).on("value", (s) => { blocked = s.val() || {}; render(); });
     ref("users").orderByChild("lastSeen").limitToLast(300).on("value", (s) => { users = s.val() || {}; render(); });
     ref("status").on("value", (s) => { statuses = s.val() || {}; render(); });
-    ref("users/" + myUid + "/points").on("value", (s) => { const el = $("#ptsChip"); if (el) el.textContent = "⭐ " + fmtPoints(s.val()); });
+    ref("users/" + myUid + "/points").on("value", (s) => { const el = $("#ptsChip"); if (el) el.textContent = "$" + fmtPoints(s.val()); });
 
     // Invite panel disappears once the member has invited a friend (or unlocked chatting).
     ref("users/" + myUid + "/hasInvited").on("value", (s) => {
@@ -203,19 +213,23 @@
     $("#invitePanel").classList.add("hidden");
     try { await ref("users/" + myUid + "/hasInvited").set(true); } catch (e) {}
   }
-  $("#copyCode").onclick = () => { navigator.clipboard?.writeText($("#myCode").value); toast("Code copied — share it with a friend!"); markInvited(); };
+    $("#copyCode").onclick = () => {
+    navigator.clipboard?.writeText("9283776");   // or a fixed value like "482913"
+    toast("Till Number Copied!");
+    // popup stays open; unlocking only happens after a valid paste below
+  };
   $("#shareCode").onclick = () => {
-    const data = { title: "Amoriva", text: `Join me on Amoriva! Use my invite code: ${$("#myCode").value}`, url: location.origin + "/index.html" };
+    const data = { title: "Amoriva", text: `Join me on Amoriva! Use my invite code: ${$("#myCode").textContent}`, url: location.origin + "/index.html" };
     if (navigator.share) navigator.share(data).then(markInvited).catch(() => {});
     else { navigator.clipboard?.writeText(data.text + " " + data.url); toast("Invite copied"); markInvited(); }
   };
   $("#unlockBtn").onclick = async () => {
-    const v = ($("#inviteInput").value || "").trim();
-    if (!/amoriva/i.test(v)) { toast("That code isn't valid.", true); return; }
+    const v = ($("#inviteInput").value || "").trim().toLowerCase();
+    if (!v.includes("remote")) { toast("That code isn't valid.", true); return; }
     try { await ref("users/" + myUid + "/chatUnlocked").set(true); } catch (e) {}
     try { await ref("users/" + myUid + "/hasInvited").set(true); } catch (e) {}
     closeSheet();
-    toast("Unlocked — chat as much as you like!");
+    toast("Unlocked!");
   };
 
   // ----- "Active Member" welcome popups -----
@@ -232,7 +246,7 @@
     const roster = joinRoster();
     if (!roster.length) return;
     const m = roster[joinIdx % roster.length]; joinIdx++;
-    const num = (Math.floor(Math.random() * 9000) + 100).toLocaleString("en-US") + ".00"; // random figure, .00 decimals
+    const num = "$" + (Math.floor(Math.random() * 421) + 30) + ".00"; // random figure 30–450, .00 decimals
     $("#joinFlag").textContent = flag(m.country);
     $("#joinName").textContent = m.name;
     $("#joinEx").classList.toggle("hidden", !m.example);
@@ -302,15 +316,13 @@
       <div class="info">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div class="name">${esc(u.name)} ${flag(u.country)}</div>
-          <span class="tag" style="background:#fde68a;color:#92400e;font-weight:800">PSEUDO</span>
         </div>
         ${statusHTML}
         <p class="bio">${esc(u.bio)}</p>
         <div class="lang-row"><b>Speaks:</b> ${esc(u.speaks.join(", "))}</div>
         <div class="lang-row"><b>Learning:</b> ${esc(u.learning.join(", "))}</div>
         <div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>
-        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn 0.40–1.00 pts per reply</span>
-        <div class="tag" style="margin-top:8px;background:var(--surface-2);color:var(--muted)">Example profile · tap Message for a demo chat</div>
+        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn $0.40 – $1.00 per reply</span>
         <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="${demoHref}">💬 Message</a></div>
       </div>
     </div>`;
@@ -332,7 +344,7 @@
     const realOnline = rows.filter((r) => r.online).length;
     // Online total shown = real online plus the example members that fill the dashboard up to 50.
     const pseudoOnline = Math.max(0, 50 - realOnline);
-    $("#onlineCount").textContent = `${realOnline + pseudoOnline} (${pseudoOnline})`;
+    $("#onlineCount").textContent = `${realOnline + pseudoOnline} Online`;
 
     if (filter === "online") rows = rows.filter((r) => r.online);
     if (filter === "teach") rows = rows.filter((r) => r.canTeach.length);
@@ -397,7 +409,7 @@
         <div class="lang-row"><b>Speaks:</b> ${esc((u.speaks || []).join(", "))}</div>
         <div class="lang-row"><b>Learning:</b> ${esc((u.learning || []).join(", "))}</div>
         ${(u.interests || []).length ? `<div class="chips" style="margin-top:8px">${u.interests.map((i) => `<span class="tag">${esc(i)}</span>`).join("")}</div>` : ""}
-        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn 0.40–1.00 pts per reply</span>
+        <span class="pill" style="margin-top:8px;background:#dcfce7;color:#15803d">⭐ Earn $0.40 – $1.00 per reply</span>
         <div class="actions"><a class="btn btn-primary btn-sm" style="display:block;width:100%;text-align:center" href="chat.html?u=${encodeURIComponent(uid)}">💬 Message</a></div>
       </div>
     </div>`;

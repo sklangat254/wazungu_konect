@@ -44,7 +44,7 @@
     <section class="slide">
       <div class="hero" style="margin-top:6px">
         <h1>People Around the World</h1>
-        <p>A glimpse of the kind of members you'll meet. Sign up to chat with the real people inside.</p>
+        <!--p>A glimpse of the kind of members you'll meet. Sign up to chat with the real people inside.</p-->
       </div>
       <div id="liveMembers"></div>
       <div class="card" id="reviewCard" style="padding:13px 14px">
@@ -53,7 +53,7 @@
           <div style="flex:1"><div style="font-weight:800" id="reviewName"></div><div class="small" id="reviewStars" style="color:#f5a623"></div></div>
         </div>
         <p class="small muted" id="reviewBody" style="font-style:italic"></p>
-        <div class="tag hidden" id="reviewTag" style="margin-top:6px;background:var(--surface-2);color:var(--muted)">Example review</div>
+        <div class="tag hidden" id="reviewTag" style="margin-top:6px;background:var(--surface-2);color:var(--muted)">Amazing experience</div>
       </div>
     </section>
 
@@ -69,7 +69,7 @@
         <div class="feature"><div class="step-num">3</div><div><h2>Start chatting</h2><p class="muted small">Messages are delivered in real time. Block or report anyone, anytime.</p></div></div>
       </div>
       <div class="card">
-        <p class="small muted center">Amoriva is free and supported by ads. It is not a paid job and nobody is paid to chat — every member is a real person here to exchange languages.</p>
+        <p class="small muted center">A great way to meet people from other countries and practise a new language.</p>
       </div>
     </section>
 
@@ -108,9 +108,9 @@
   // labelled as examples — a visitor meets the REAL members after signing up (members.html).
   // Place pseudo1.png, pseudo2.png, pseudo3.png next to this file to show the photos.
   const PSEUDO = [
-    { img: "pseudo1.png", name: "Margaret", country: "US", msg: "Hi! I'd love to practise English and learn about your culture." },
-    { img: "pseudo2.png", name: "Hans",     country: "DE", msg: "Looking for a friendly chat and to share traditions." },
-    { img: "pseudo3.png", name: "Pierre",   country: "FR", msg: "Bonjour! What's a dish everyone should try from your country?" }
+    { img: "fpseudo1.png", name: "Margaret", country: "US", msg: "Hi! I'd love to practise English and learn about your culture." },
+    { img: "fpseudo2.png", name: "Hans",     country: "DE", msg: "Looking for a friendly chat and to share traditions." },
+    { img: "mpseudo3.png", name: "Pierre",   country: "FR", msg: "Bonjour! What's a dish everyone should try from your country?" }
   ];
   let pseudoTimer = null;
 
@@ -126,7 +126,7 @@
           ${typing ? TYPING : `<span class="status-text online">Online</span>`}
           <span class="pill" style="padding:2px 9px;font-size:.72rem">💬 Looking to chat</span>
         </div>
-        <div class="tag" style="margin-top:5px;font-size:.66rem;padding:2px 8px;background:var(--surface-2);color:var(--muted)">Example profile · not a real member</div>
+        <div class="tag" style="margin-top:5px;font-size:.66rem;padding:2px 8px;background:var(--surface-2);color:var(--muted)">Active now. Looking for someone to chat</div>
       </div></div>`;
   }
 
@@ -136,7 +136,7 @@
     const draw = () => {
       const t = Math.floor(Math.random() * PSEUDO.length);
       box.innerHTML = PSEUDO.map((p, idx) => pseudoCard(p, idx === t)).join("")
-        + `<p class="small center" style="color:#fff;opacity:.85;margin:2px 0 10px">A preview of who you'll meet. Sign up to chat with real members online now.</p>`;
+        + `<p class="small center" style="color:#fff;opacity:.85;margin:2px 0 10px">A preview of people you'll meet. Sign up to start chatting with other members online now.</p>`;
     };
     draw();
     if (!pseudoTimer) pseudoTimer = setInterval(draw, 2600);
